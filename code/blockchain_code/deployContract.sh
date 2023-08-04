@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Start Ganache in the background
-ganache-cli --host 0.0.0.0 --mnemonic "${MNEMONIC}" --defaultBalanceEther 1000 &
+ganache-cli --host 0.0.0.0 --mnemonic "${MNEMONIC}" --derive-path "${DERIVATION_PATH}" --defaultBalanceEther 1000 &
 
 # Wait for Ganache to initialize
 echo "Waiting for Ganache to initialize..."

@@ -39,11 +39,12 @@ WORKDIR /usr/src/app
 # Expose the port Ganache CLI will run on
 EXPOSE 8545
 
-# Deterministic mnemonic (replace with your desired mnemonic or keep for testing)
+# Deterministic mnemonic and derivation path
 ENV MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
+ENV DERIVATION_PATH="m/44'/60'/0'/0/0"
 
-# Initial balance for the accounts in Wei (e.g., 1000 Ether)
-ENV INITIAL_BALANCE="1000000000000000000000000000"
+# Initial balance for the accounts in Wei
+ENV INITIAL_BALANCE="1000000000000000000000000000000000"
 
 # Run Ganache CLI with the specified mnemonic and balance when the container launches
 ENTRYPOINT [ "/scripts/deployContract.sh" ]

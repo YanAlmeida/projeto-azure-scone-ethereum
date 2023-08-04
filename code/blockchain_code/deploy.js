@@ -25,6 +25,7 @@ web3.eth.getAccounts().then(function(accounts) {
         from: accounts[0],
         gas: '4700000'
     }).then(function(newContractInstance) {
-        console.log('Contract Address:', newContractInstance.options.address);
+        console.log('Contract Address: ', newContractInstance.options.address);
+        console.log('Contract ABI: ', JSON.stringify(abi))
     });
 });
