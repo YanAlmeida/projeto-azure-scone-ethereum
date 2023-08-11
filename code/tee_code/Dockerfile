@@ -1,3 +1,8 @@
-FROM python:3.7.3-alpine3.10
+FROM ubuntu:20.04
+
+RUN apt-get update && apt-get install -y \
+    python3.8 \
+    python3-pip
+
 COPY ./src /app
 ENTRYPOINT ["python3", "/app/tee_test.py"]

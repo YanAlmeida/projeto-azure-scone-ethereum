@@ -18,6 +18,12 @@ variable "ssh_public_key" {
   default     = "your-ssh-public-key-here"
 }
 
+variable "enclave_sign_private_key" {
+  description = "Private key for gramine enclave signing."
+  default     = "your-private-key-here"
+  sensitive   = true
+}
+
 variable "dockerhub_image_sgx" {
   description = "Docker image for SGX instance."
   default     = "your-dockerhub-image-for-sgx"
@@ -26,4 +32,14 @@ variable "dockerhub_image_sgx" {
 variable "dockerhub_image_blockchain" {
   description = "Docker image for blockchain instance."
   default     = "your-dockerhub-image-for-blockchain"
+}
+
+variable "sgx_driver_distro_name" {
+  description = "Distro name for URL to download SGX driver"
+  default     = "ubuntu20.04-server"
+}
+
+variable "sgx_driver_file_name" {
+  description = "Filename for URL to download SGX driver"
+  default     = "sgx_linux_x64_driver_2.11.54c9c4c.bin"
 }
