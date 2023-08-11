@@ -1,0 +1,1 @@
+print("EXECUTANDO CÓDIGO DE DENTRO DO TEE!!!")

@@ -40,7 +40,7 @@ resource "azurerm_virtual_machine" "vm_sgx" {
 
     ssh_keys {
       path     = "/home/ubuntu/.ssh/authorized_keys"
-      key_data = var.ssh_key
+      key_data = var.ssh_public_key
     }
   }
 
@@ -87,7 +87,7 @@ resource "azurerm_virtual_machine" "vm_blockchain" {
 
     ssh_keys {
       path     = "/home/ubuntu/.ssh/authorized_keys"
-      key_data = var.ssh_key
+      key_data = var.ssh_public_key
     }
   }
 

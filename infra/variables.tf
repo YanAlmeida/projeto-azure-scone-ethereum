@@ -1,8 +1,3 @@
-
-provider "azurerm" {
-  features {}
-}
-
 variable "prefix" {
   description = "A prefix used for naming resources."
   default     = "myapp"
@@ -18,7 +13,7 @@ variable "ssh_access_ip_address" {
   default     = "myapp"
 }
 
-variable "ssh_key" {
+variable "ssh_public_key" {
   description = "SSH public key for authentication."
   default     = "your-ssh-public-key-here"
 }
