@@ -1,3 +1,7 @@
+resource "tls_private_key" "gramine_sgx_signing_key" {
+  algorithm = "RSA"
+  rsa_bits  = 3072
+}
 
 resource "azurerm_virtual_machine" "vm_sgx" {
   name                  = "${var.prefix}-vm-sgx"
@@ -47,7 +51,7 @@ resource "azurerm_virtual_machine" "vm_sgx" {
             cd gsc
 
             cp config.yaml.template config.yaml
-            echo ${var.enclave_sign_private_key} >> enclave-key.pem
+            echo "${tls_private_key.gramine_sgx_signing_key.private_key_pem}" > enclave-key.pem
 
             sudo ./gsc build --insecure-args ${var.dockerhub_image_sgx} test/generic.manifest
             sudo ./gsc sign-image ${var.dockerhub_image_sgx} enclave-key.pem
@@ -115,5 +119,8 @@ resource "azurerm_virtual_machine" "vm_blockchain" {
       key_data = var.ssh_public_key
     }
   }
+}
 
+  output "private_key" {
+    value = tls_private_key.gramine_sgx_signing_key.private_key_pem
 }
