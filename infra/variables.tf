@@ -18,12 +18,6 @@ variable "ssh_public_key" {
   default     = "your-ssh-public-key-here"
 }
 
-variable "enclave_sign_private_key" {
-  description = "Private key for gramine enclave signing."
-  default     = "your-private-key-here"
-  sensitive   = true
-}
-
 variable "dockerhub_image_sgx" {
   description = "Docker image for SGX instance."
   default     = "your-dockerhub-image-for-sgx"
