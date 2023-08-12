@@ -13,11 +13,6 @@ variable "ssh_access_ip_address" {
   default     = "myapp"
 }
 
-variable "ssh_public_key" {
-  description = "SSH public key for authentication."
-  default     = "your-ssh-public-key-here"
-}
-
 variable "dockerhub_image_sgx" {
   description = "Docker image for SGX instance."
   default     = "your-dockerhub-image-for-sgx"

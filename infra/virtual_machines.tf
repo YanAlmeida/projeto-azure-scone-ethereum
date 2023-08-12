@@ -1,8 +1,3 @@
-resource "tls_private_key" "gramine_sgx_signing_key" {
-  algorithm = "RSA"
-  rsa_bits  = 3072
-}
-
 resource "azurerm_linux_virtual_machine" "vm_sgx" {
   name                = "${var.prefix}-vm-sgx"
   location            = var.location
@@ -21,8 +16,8 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
 
   source_image_reference {
     publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
+    offer     = "0001-com-ubuntu-server-focal"
+    sku       = "20_04-lts-gen2"
     version   = "latest"
   }
 
@@ -58,7 +53,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
 
   admin_ssh_key {
     username   = "ubuntu"
-    public_key = var.ssh_public_key
+    public_key = tls_private_key.ssh_key.public_key_openssh
   }
 
   network_interface_ids = [azurerm_network_interface.ni_sgx.id]
@@ -68,7 +63,7 @@ resource "azurerm_linux_virtual_machine" "vm_blockchain" {
   name                = "${var.prefix}-vm-blockchain"
   location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
-  size                = "Standard_B1ls" # Cheapest available size, verify if it fits your needs
+  size                = "Standard_DS1_v2" # Cheapest available size, verify if it fits your needs
   priority            = "Spot"
   eviction_policy     = "Deallocate"
 
@@ -92,19 +87,14 @@ resource "azurerm_linux_virtual_machine" "vm_blockchain" {
     sudo apt-get update
     sudo apt-get install -y docker.io
     sudo docker pull ${var.dockerhub_image_blockchain}
-    sudo docker run ${var.dockerhub_image_blockchain}
+    sudo docker run -p 8545:8545 ${var.dockerhub_image_blockchain}
   CUSTOM_DATA
   )
 
   admin_ssh_key {
     username   = "ubuntu"
-    public_key = var.ssh_public_key
+    public_key = tls_private_key.ssh_key.public_key_openssh
   }
 
   network_interface_ids = [azurerm_network_interface.ni_blockchain.id]
-}
-
-output "private_key" {
-  value = tls_private_key.gramine_sgx_signing_key.private_key_pem
-  sensitive = true
 }
