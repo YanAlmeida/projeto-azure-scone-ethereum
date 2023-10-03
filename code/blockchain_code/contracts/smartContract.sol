@@ -44,6 +44,9 @@ contract smartContract {
     address[] public connectedMachines;
     address[] public disconnectedMachines;
 
+    // Definição de variável para load balancing
+    uint machineIndex = 0;
+
     // Definição de variáveis para auxílio na criação de Jobs (lastJobId) e na validação de máquinas disponíveis (jobUpdateInterval)
     uint private lastJobId = 0;
     uint public jobUpdateInterval = 1 minutes;
@@ -161,17 +164,16 @@ contract smartContract {
     // Função para distribuição dos jobs entre as máquinas disponíveis utilizando round-robin
     function addressJobs(uint[] memory jobsToAddress) private{
         uint length = jobsToAddress.length;
-        uint machineIndex = 0;
 
         for(uint i = 0; i < length; i++){
             uint jobId = jobsToAddress[i];
-            
-            jobsWAITINGPerAddress[connectedMachines[machineIndex]].push(jobId);
-            machineIndex++;
 
             if(machineIndex == connectedMachines.length){
                 machineIndex = 0;
             }
+            
+            jobsWAITINGPerAddress[connectedMachines[machineIndex]].push(jobId);
+            machineIndex++;
         }
     }
 
