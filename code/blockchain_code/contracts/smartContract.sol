@@ -3,6 +3,12 @@ pragma solidity ^0.8.0;
 
 contract smartContract {
 
+    // ------------------ DEFINIÇÃO DE EVENTOS DE RETORNO / EVENTOS DE DISPARO ------------------ //
+
+    event ReturnJobs(address indexed _machine, uint[] _jobsIds, string[] _filesUrls);
+    event ReturnUInt(address indexed _machine, uint _value);
+    event NotifyMachines(address indexed _machine);
+
     // ------------------ DEFINIÇÃO DE ESTRUTURAS E VARIÁVEIS ------------------ //
 
     // Definição de estrutura para dados referentes aos nós
@@ -41,6 +47,8 @@ contract smartContract {
 
     // Definição de mappings e arrays para controle das máquinas relacionadas ao contrato
     mapping(address => AddressInfo) private addressInfo;
+    mapping(address => bool) private machineNotified;
+
     address[] public connectedMachines;
     address[] public disconnectedMachines;
 
@@ -54,8 +62,8 @@ contract smartContract {
     // ------------------ DEFINIÇÃO DE FUNÇÕES EXTERNAS E PÚBLICAS ------------------ //
 
     // Função para submissão de job
-    function submitJob(string calldata url) external {
-        uint _jobId = lastJobId + 1;
+    function submitJob(string calldata url) external returns (uint _jobId) {
+        _jobId = lastJobId + 1;
         lastJobId++;
         require(jobsPerId[_jobId].jobId == 0, "Job already exists");
         jobsPerId[_jobId] = Job(_jobId, url);
@@ -65,17 +73,40 @@ contract smartContract {
         jobsToAddress[0] = _jobId;
 
         addressJobs(jobsToAddress);
+        
+        emit ReturnUInt(msg.sender, _jobId);
+        return _jobId;
+    }
+
+    // Função para leitura dos jobs cadastrados (todos)
+    function getJobs() external view returns (
+        uint[] memory jobIds,
+        string[] memory fileUrls
+    ){
+        uint length = jobs.length;
+
+        // Prepara estruturas para retorno, preenchendo-as com dados dos jobs
+        jobIds = new uint[](length);
+        fileUrls = new string[](length);
+
+        for (uint i = 0; i < length; i++) {
+            Job memory job = jobsPerId[jobs[i]];
+            jobIds[i] = job.jobId;
+            fileUrls[i] = job.fileUrl;
+        }
+
+        return (jobIds, fileUrls);
     }
 
     // Função para recuperação de jobs para processamento
-    function getJobs() external returns (
+    function getJobsMachine() external returns (
         uint[] memory jobIds,
         string[] memory fileUrls
     ){
         updateMachineTimestamp(msg.sender);
 
         // Recupera jobs no mapping "WAITING" para a máquina que realiza a busca
-        uint[] storage jobsReturn = jobsWAITINGPerAddress[msg.sender];
+        uint[] memory jobsReturn = jobsWAITINGPerAddress[msg.sender];
         uint length = jobsReturn.length;
 
         // Prepara estruturas para retorno, preenchendo-as com dados dos jobs
@@ -83,7 +114,7 @@ contract smartContract {
         fileUrls = new string[](length);
 
         for (uint i = 0; i < length; i++) {
-            Job storage job = jobsPerId[jobsReturn[i]];
+            Job memory job = jobsPerId[jobsReturn[i]];
             jobIds[i] = job.jobId;
             fileUrls[i] = job.fileUrl;
 
@@ -95,8 +126,10 @@ contract smartContract {
         jobsPROCESSINGPerAddress[msg.sender] = concat(jobsPROCESSINGPerAddress[msg.sender], jobsReturn);
         delete jobsWAITINGPerAddress[msg.sender];
         
+        emit ReturnJobs(msg.sender, jobIds, fileUrls);
         return (jobIds, fileUrls);
     }
+    
 
 
     // Função para submissão de resultados de jobs
@@ -120,7 +153,7 @@ contract smartContract {
     }
 
     // Função para retorno de resultado referente ao job solicitado
-    function getResults(uint _jobId) external view returns(
+    function getResult(uint _jobId) external view returns(
         uint charCount,
         string memory message
     ) {
@@ -173,8 +206,17 @@ contract smartContract {
             }
             
             jobsWAITINGPerAddress[connectedMachines[machineIndex]].push(jobId);
+            machineNotified[connectedMachines[machineIndex]] = true;
             machineIndex++;
         }
+
+        for(uint i = 0; i < connectedMachines.length; i++){
+            if(machineNotified[connectedMachines[i]]){
+                emit NotifyMachines(connectedMachines[i]);
+                delete machineNotified[connectedMachines[i]];
+            }
+        }
+
     }
 
     // Função para remoção de job do mapping de "PROCESSING"
