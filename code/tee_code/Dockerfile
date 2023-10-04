@@ -5,4 +5,4 @@ RUN apt-get update && apt-get install -y \
     python3-pip
 
 COPY ./src /app
-ENTRYPOINT ["python3", "/app/tee_test.py"]
+ENTRYPOINT ["python3", "/app/main.py"]

@@ -49,34 +49,10 @@ class SmartContract:
     def getJobs(self) -> List[Job]:
         result = self._execute_call_method("getJobs")
         return [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in zip(result[0], result[1])]
-    
+
     def getResult(self, job_id: int) -> Result:
-        return self._execute_call_method("getResult", job_id)
-    
-    def connectMachine(self) -> Tuple[str, str]:
-        return self._execute_transaction_method("connectMachine")
-    
-    def disconnectMachine(self) -> Tuple[str, str]:
-        return self._execute_transaction_method("disconnectMachine")
-    
-    def heartBeat(self) -> Tuple[str, str]:
-        return self._execute_transaction_method("heartBeat")
-    
-    def getJobsMachine(self) -> List[Job]:
-        _, receipt = self._execute_transaction_method("getJobsMachine")
-        logs = self._contract.events.ReturnJobs().process_receipt(receipt)
-        
-        jobs_ids = logs[0]['args']['_jobsIds']
-        files_urls = logs[0]['args']['_filesUrls']
-        
-        return [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in zip(jobs_ids, files_urls)]
-    
-    def submitResults(self, results: List[Result]) -> Tuple[str, str]:
-        jobs_ids = [result["jobId"] for result in results]
-        char_counts = [result["charCount"] for result in results]
-        messages = [result["message"] for result in results]
-        
-        return self._execute_transaction_method("submitResults", jobs_ids, char_counts, messages)
+        result = self._execute_call_method("getResult", job_id)
+        return {"jobId": job_id, "charCount": result[0], "message": result[1]}
 
 
 MNEMONIC_WORDS = os.environ.get("MNEMONIC")

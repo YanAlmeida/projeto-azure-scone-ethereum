@@ -8,11 +8,12 @@ contract smartContract {
     event ReturnJobs(address indexed _machine, uint[] _jobsIds, string[] _filesUrls);
     event ReturnUInt(address indexed _machine, uint _value);
     event NotifyMachines(address indexed _machine);
+    event NotifyResult(uint indexed _jobId, uint _charCount, string _message);
 
     // ------------------ DEFINIÇÃO DE ESTRUTURAS E VARIÁVEIS ------------------ //
 
     // Definição de estrutura para dados referentes aos nós
-    struct AddressInfo{
+    struct AddressInfo {
         bool isConnected;
         uint timestamp;
         uint connectedIndex;
@@ -25,6 +26,15 @@ contract smartContract {
         string fileUrl;
     }
 
+    // Definição de estrutura para dados referentes ao processamento do job
+    struct JobProcessingInfo {
+        uint waitingTimestamp;
+        uint processingTimestamp;
+        uint processedTimestamp;
+        string currentStatus;
+        address responsibleMachine;
+    }
+
     // Definição da estrutura do resultado
     struct Result {
         uint jobId;
@@ -32,13 +42,22 @@ contract smartContract {
         string message;
     }
 
+    // Definição de mapping para tracking do processamento do job
+    mapping(uint => JobProcessingInfo) public jobProcessingInfo;
+
     // Definição de mappings e array para acesso aos jobs
     mapping(address => uint[]) public jobsWAITINGPerAddress;
     mapping(address => uint[]) public jobsPROCESSINGPerAddress;
     mapping(address => uint[]) public jobsPROCESSEDPerAddress;
 
-    mapping(uint => uint) private jobToIndexInProcessing; // Para facilitar remoção de jobs do estado 'processing'
+    mapping(uint => uint) private jobToIndexInProcessingMachine; // Para facilitar remoção de jobs do estado 'processing'
+
+    mapping(uint => uint) private jobToIndexInWaiting;
+    mapping(uint => uint) private jobToIndexInProcessing;
     mapping(uint => Job) public jobsPerId;
+    uint[] public jobsWaiting;
+    uint[] public jobsProcessing;
+    uint[] public jobsProcessed;
     uint[] public jobs;
 
     // Definição de mappings e array para acesso aos resultados
@@ -59,12 +78,17 @@ contract smartContract {
     uint private lastJobId = 0;
     uint public jobUpdateInterval = 1 minutes;
 
+    // Variáveis para auxílio em timeouts
+    uint public jobWaitingMaxTime = 5 minutes;
+    uint public jobProcessingMaxTime = 5 minutes;
+
     // ------------------ DEFINIÇÃO DE FUNÇÕES EXTERNAS E PÚBLICAS ------------------ //
 
     // Função para submissão de job
     function submitJob(string calldata url) external returns (uint _jobId) {
         _jobId = lastJobId + 1;
         lastJobId++;
+        require(connectedMachines.length > 0, "No machines to process request");
         require(jobsPerId[_jobId].jobId == 0, "Job already exists");
         jobsPerId[_jobId] = Job(_jobId, url);
         jobs.push(_jobId);
@@ -119,18 +143,24 @@ contract smartContract {
             fileUrls[i] = job.fileUrl;
 
             // Inclui index do job no array de processamento no mapping "PROCESSING"
-            jobToIndexInProcessing[job.jobId] = jobsPROCESSINGPerAddress[msg.sender].length + i;
+            jobToIndexInProcessingMachine[job.jobId] = jobsPROCESSINGPerAddress[msg.sender].length + i;
+
+            // Atualiza dados de processamento do job
+            jobProcessingInfo[job.jobId].processingTimestamp = block.timestamp;
+            jobProcessingInfo[job.jobId].currentStatus = "PROCESSING";
+            jobsProcessing.push(job.jobId);
+            jobToIndexInProcessing[job.jobId] = jobsProcessing.length - 1;
+
+            removeJobFromWaiting(job.jobId);
         }
 
-        // Concatena jobs a retornar no mapping "PROCESSING"    
+        // Concatena jobs a retornar no mapping "PROCESSING" e remove lista de waiting da máquina
         jobsPROCESSINGPerAddress[msg.sender] = concat(jobsPROCESSINGPerAddress[msg.sender], jobsReturn);
         delete jobsWAITINGPerAddress[msg.sender];
         
         emit ReturnJobs(msg.sender, jobIds, fileUrls);
         return (jobIds, fileUrls);
     }
-    
-
 
     // Função para submissão de resultados de jobs
     function submitResults(uint[] calldata _jobsIds, uint[] calldata _charCounts, string[] calldata _messages) external {
@@ -147,7 +177,15 @@ contract smartContract {
             resultsPerJobId[_jobId] = Result(_jobId, _charCount, _message);
 
             jobsPROCESSEDPerAddress[msg.sender].push(_jobId);
+            jobsProcessed.push(_jobId);
+
             removeJobFromProcessing(msg.sender, _jobId);
+
+            // Atualiza dados de processamento do job
+            jobProcessingInfo[_jobId].processedTimestamp = block.timestamp;
+            jobProcessingInfo[_jobId].currentStatus = "PROCESSED";
+
+            emit NotifyResult(_jobId, _charCount, _message);
         }
 
     }
@@ -190,9 +228,40 @@ contract smartContract {
         updateMachineTimestamp(msg.sender);
         updateAvailableConnectedMachines();
         redistributeDisconnectedMachinesJobs();
+        renotifyAndRedistributeJobs();
     }
 
     // ------------------ DEFINIÇÃO DE FUNÇÕES INTERNAS E PRIVADAS ------------------ //
+
+
+    // Função para 'renotificação' de jobs waiting e redistribuição de jobs processing há muito tempo
+    function renotifyAndRedistributeJobs() private {
+        // Renotificando máquinas com jobs waiting há muito tempo
+        uint lengthWaiting = jobsWaiting.length;
+        bool runSecondLoop = false;
+
+        for(uint i = 0; i < lengthWaiting; i++){
+            uint _jobId = jobsWaiting[i];
+            uint waitingTimestamp = jobProcessingInfo[_jobId].waitingTimestamp;
+            uint waitingTime = block.timestamp - waitingTimestamp;
+            if( waitingTime > jobWaitingMaxTime){
+                machineNotified[jobProcessingInfo[_jobId].responsibleMachine] = true;
+                runSecondLoop = true;
+            }
+        }
+
+        if(runSecondLoop){
+            for(uint i = 0; i < connectedMachines.length; i++){
+                if(machineNotified[connectedMachines[i]]){
+                    emit NotifyMachines(connectedMachines[i]);
+                    delete machineNotified[connectedMachines[i]];
+                }
+            }
+        }
+
+        // Redistribuindo jobs em timeout (AVALIAR NECESSIDADE)
+
+    }
 
     // Função para distribuição dos jobs entre as máquinas disponíveis utilizando round-robin
     function addressJobs(uint[] memory jobsToAddress) private{
@@ -206,6 +275,12 @@ contract smartContract {
             }
             
             jobsWAITINGPerAddress[connectedMachines[machineIndex]].push(jobId);
+
+            // Armazena dados do processamento do job
+            jobProcessingInfo[jobId] = JobProcessingInfo(block.timestamp, 0, 0, "WAITING", connectedMachines[machineIndex]);
+            jobsWaiting.push(jobId);
+            jobToIndexInWaiting[jobId] = jobsWaiting.length - 1;
+
             machineNotified[connectedMachines[machineIndex]] = true;
             machineIndex++;
         }
@@ -222,15 +297,48 @@ contract smartContract {
     // Função para remoção de job do mapping de "PROCESSING"
     function removeJobFromProcessing(address _machine, uint jobIdToRemove) private {
         // Recupera index do job
-        uint index = jobToIndexInProcessing[jobIdToRemove];
+        uint index = jobToIndexInProcessingMachine[jobIdToRemove];
 
         // O troca pelo último e remove
         jobsPROCESSINGPerAddress[_machine][index] = jobsPROCESSINGPerAddress[_machine][jobsPROCESSINGPerAddress[_machine].length - 1];
         jobsPROCESSINGPerAddress[_machine].pop();
 
         // Atualiza mapping de indexes
-        jobToIndexInProcessing[jobsPROCESSINGPerAddress[_machine][index]] = index;
+        if(jobsPROCESSINGPerAddress[_machine].length > 0){
+            jobToIndexInProcessingMachine[jobsPROCESSINGPerAddress[_machine][index]] = index;
+        }
+        delete jobToIndexInProcessingMachine[jobIdToRemove];
+
+        // Recupera index do job no array
+        uint indexArray = jobToIndexInProcessing[jobIdToRemove];
+
+        // O troca pelo último e remove
+        jobsProcessing[indexArray] = jobsProcessing[jobsProcessing.length - 1];
+        jobsProcessing.pop();
+
+        // Atualiza mapping de indexes
+        if(jobsProcessing.length > 0){
+            jobToIndexInProcessing[jobsProcessing[indexArray]] = indexArray;
+        }
         delete jobToIndexInProcessing[jobIdToRemove];
+
+    }
+
+    // Função para remoção de job do estado "WAITING"
+    function removeJobFromWaiting(uint jobIdToRemove) private {
+
+        // Recupera index do job no array
+        uint indexArray = jobToIndexInWaiting[jobIdToRemove];
+
+        // O troca pelo último e remove
+        jobsWaiting[indexArray] = jobsWaiting[jobsWaiting.length - 1];
+        jobsWaiting.pop();
+
+        // Atualiza mapping de indexes
+        if(jobsWaiting.length > 0){
+            jobToIndexInWaiting[jobsWaiting[indexArray]] = indexArray;
+        }
+        delete jobToIndexInWaiting[jobIdToRemove];
 
     }
 
