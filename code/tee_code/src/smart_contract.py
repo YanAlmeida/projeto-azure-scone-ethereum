@@ -1,10 +1,13 @@
 import os
-from typing import Tuple, Any
+from typing import Tuple, List, Dict, Union
 
 from web3 import Web3, Account
 from web3.contract import Contract
 from web3.eth import Eth
 from hdwallet import HDWallet
+
+Job = Dict[str, Union[int, str]]
+Result = Dict[str, Union[int, str]]
 
 
 def get_account(index, mnemonic, derivation_path):
@@ -34,7 +37,7 @@ class SmartContract:
         transaction_receipt = self._w3.eth.wait_for_transaction_receipt(transaction_hash)
         return (transaction_hash, transaction_receipt)
 
-    def _execute_call_method(self, methodName: str, *args, **kwargs) -> str:
+    def _execute_call_method(self, methodName: str, *args, **kwargs) -> Union[List, str, int]:
         method = getattr(self._contract.functions, methodName)
         return method(*args, **kwargs).call()
     
