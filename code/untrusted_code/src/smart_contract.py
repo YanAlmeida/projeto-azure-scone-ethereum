@@ -1,5 +1,5 @@
 import os
-from typing import Tuple, List, Dict, Union
+from typing import Tuple, List, Dict, Union, Any
 
 from web3 import Web3, Account
 from web3.contract import Contract
@@ -40,7 +40,7 @@ class SmartContract:
 
     def _execute_transaction_method(
             self, methodName: str, *args, **kwargs
-    ) -> Tuple[str, str]:
+    ) -> Tuple[Any, Any]:
         """
         Método envio de transação/execução de função de escrita no contrato
         inteligente
@@ -117,21 +117,21 @@ class SmartContract:
         result = self._execute_call_method("getResult", job_id)
         return {"jobId": job_id, "charCount": result[0], "message": result[1]}
 
-    def connectMachine(self) -> Tuple[str, str]:
+    def connectMachine(self) -> Tuple[Any, Any]:
         """
         Método para conexão da máquina com a blockchain
         :return: Hash e receita da transação em tupla
         """
         return self._execute_transaction_method("connectMachine")
 
-    def disconnectMachine(self) -> Tuple[str, str]:
+    def disconnectMachine(self) -> Tuple[Any, Any]:
         """
         Método para desconexão da máquina com a blockchain
         :return: Hash e receita da transação em tupla
         """
         return self._execute_transaction_method("disconnectMachine")
 
-    def heartBeat(self) -> Tuple[str, str]:
+    def heartBeat(self) -> Tuple[Any, Any]:
         """
         Método para envio de heartbeat da máquina para a blockchain
         :return: Hash e receita da transação em tupla
@@ -152,7 +152,7 @@ class SmartContract:
         return [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in
                 zip(jobs_ids, files_urls)]
 
-    def submitResults(self, results: List[Result]) -> Tuple[str, str]:
+    def submitResults(self, results: List[Result]) -> Tuple[Any, Any]:
         """
         Método para envio de resultados de jobs à blockchain
         :param results: Lista de 'Result'
