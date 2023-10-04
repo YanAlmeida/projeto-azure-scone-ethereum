@@ -1,5 +1,6 @@
 import threading
 import time
+from typing import List
 
 from smart_contract import get_contract
 from src.thread_get_jobs import get_jobs
@@ -10,7 +11,7 @@ from src.thread_write_pipe import write_pipe
 POLL_INTERVAL = 10  # seconds
 
 
-def get_blockchain_notifications():
+def get_blockchain_notifications() -> List:
     return get_contract().get_job_notification_filter().get_new_entries()
 
 
@@ -27,6 +28,6 @@ if __name__ == '__main__':
     thread_send_results_blockchain.start()
 
     while True:
-        if len(get_blockchain_notifications() > 0):
+        if len(get_blockchain_notifications()) > 0:
             thread_get_jobs = threading.Thread(target=get_jobs)
         time.sleep(POLL_INTERVAL)
