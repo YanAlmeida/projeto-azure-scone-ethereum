@@ -12,10 +12,16 @@ POLL_INTERVAL = 10  # seconds
 
 
 def get_blockchain_notifications() -> List:
+    """
+    Função para monitoramento de eventos de alocação de jobs para a máquina no
+    contrato inteligente
+    :return: Lista de logs referentes a jobs alocados para a máquina
+    """
     return get_contract().get_job_notification_filter().get_new_entries()
 
 
 if __name__ == '__main__':
+    get_contract().connectMachine()
     thread_write_pipe = threading.Thread(target=write_pipe)
     thread_write_pipe.start()
 

@@ -25,12 +25,30 @@ class SmartContract:
     _event_job_submission_filter: LogFilter = None
 
     def __init__(self, account: Account, contract: Contract, w3: Web3):
+        """
+        Método para instanciar classe SmartContract
+        :param account: Objeto do tipo 'Account' representando
+        conta utilizada pelo nó
+        :param contract: Objeto do tipo 'Contract' representando
+        o contrato inteligente
+        :param w3: Objeto do tipo 'Web3' representando o cliente
+        Web3 conectado à blockchain
+        """
         self._account = account
         self._contract = contract
         self._w3 = w3
 
-    def _execute_transaction_method(self, methodName: str, *args, **kwargs) -> \
-            Tuple[str, str]:
+    def _execute_transaction_method(
+            self, methodName: str, *args, **kwargs
+    ) -> Tuple[str, str]:
+        """
+        Método envio de transação/execução de função de escrita no contrato
+        inteligente
+        :param methodName: Nome da função a ser invocada
+        :param args: Argumentos para enviar à função
+        :param kwargs: Argumentos nomeados para enviar à função
+        :return: Tupla de strings contendo hash da transação e sua receita
+        """
         method = getattr(self._contract.functions, methodName)
         nonce = self._w3.eth.get_transaction_count(self._account.address)
         transaction = method(*args, **kwargs).build_transaction(
@@ -43,12 +61,25 @@ class SmartContract:
             transaction_hash)
         return (transaction_hash, transaction_receipt)
 
-    def _execute_call_method(self, methodName: str, *args, **kwargs) -> Union[
-        List, str, int]:
+    def _execute_call_method(
+            self, methodName: str, *args, **kwargs
+    ) -> Union[List, str, int]:
+        """
+        Método para execução de função read-only no contrato inteligente
+        :param methodName: Nome da função a ser invocada
+        :param args: Argumentos para enviar à função
+        :param kwargs: Argumentos nomeados para enviar à função
+        :return: Retorno da função em si (lista, string ou inteiro)
+        """
         method = getattr(self._contract.functions, methodName)
         return method(*args, **kwargs).call()
 
     def get_job_notification_filter(self) -> LogFilter:
+        """
+        Função para obtenção de LogFilter analisando eventos de
+        alocação de jobs para a máquina no contrato inteligente
+        :return: Objeto LogFilter para acesso aos eventos
+        """
         if self._event_job_submission_filter is None:
             self._event_job_submission_filter = \
                 self._contract.events.NotifyMachines.create_filter(
@@ -58,29 +89,60 @@ class SmartContract:
         return self._event_job_submission_filter
 
     def submitJob(self, url: str) -> int:
+        """
+        Método para submissão de novo job
+        :param url: URL contendo arquivo com os dados do job
+        :return: Inteiro representando o ID do job criado no contrato
+        inteligente
+        """
         _, receipt = self._execute_transaction_method("submitJob", url)
         logs = self._contract.events.ReturnUInt().process_receipt(receipt)
         return logs[0]['args']['_value']
 
     def getJobs(self) -> List[Job]:
+        """
+        Método para recuperação de todos os jobs armazenados na blockchain
+        :return: Lista de 'Job'
+        """
         result = self._execute_call_method("getJobs")
         return [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in
                 zip(result[0], result[1])]
 
     def getResult(self, job_id: int) -> Result:
+        """
+        Método para recuperação de resultado de job
+        :param job_id: ID do job cujo resultado será consultado
+        :return: Objeto 'Result'
+        """
         result = self._execute_call_method("getResult", job_id)
         return {"jobId": job_id, "charCount": result[0], "message": result[1]}
 
     def connectMachine(self) -> Tuple[str, str]:
+        """
+        Método para conexão da máquina com a blockchain
+        :return: Hash e receita da transação em tupla
+        """
         return self._execute_transaction_method("connectMachine")
 
     def disconnectMachine(self) -> Tuple[str, str]:
+        """
+        Método para desconexão da máquina com a blockchain
+        :return: Hash e receita da transação em tupla
+        """
         return self._execute_transaction_method("disconnectMachine")
 
     def heartBeat(self) -> Tuple[str, str]:
+        """
+        Método para envio de heartbeat da máquina para a blockchain
+        :return: Hash e receita da transação em tupla
+        """
         return self._execute_transaction_method("heartBeat")
 
     def getJobsMachine(self) -> List[Job]:
+        """
+        Método para recuperação dos jobs em espera alocados para a máquina
+        :return: Lista de 'Job'
+        """
         _, receipt = self._execute_transaction_method("getJobsMachine")
         logs = self._contract.events.ReturnJobs().process_receipt(receipt)
 
@@ -91,6 +153,11 @@ class SmartContract:
                 zip(jobs_ids, files_urls)]
 
     def submitResults(self, results: List[Result]) -> Tuple[str, str]:
+        """
+        Método para envio de resultados de jobs à blockchain
+        :param results: Lista de 'Result'
+        :return: Hash e receita da transação
+        """
         jobs_ids = [result["jobId"] for result in results]
         char_counts = [result["charCount"] for result in results]
         messages = [result["message"] for result in results]
@@ -112,6 +179,10 @@ CONTRACT = None
 
 
 def get_contract() -> SmartContract:
+    """
+    Função para retorno de objeto para interação com o contrato inteligente.
+    :return: Instância de 'SmartContract' (única na aplicação)
+    """
     global CONTRACT
     if CONTRACT is None:
         account = get_account(ACCOUNT_INDEX, MNEMONIC_WORDS, DERIVATION_PATH)

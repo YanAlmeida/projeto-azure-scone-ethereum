@@ -7,6 +7,10 @@ WRITE_PIPE_PATH = os.environ.get("WRITE_PIPE_PATH")
 
 
 def write_pipe():
+    """
+    Thread para escrita de dados da fila na named pipe de comunicação com o TEE
+    :return:
+    """
     if not os.path.exists(WRITE_PIPE_PATH):
         os.mkfifo(WRITE_PIPE_PATH)
     with open(WRITE_PIPE_PATH, "w") as pipe:
