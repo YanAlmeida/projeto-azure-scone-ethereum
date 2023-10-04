@@ -9,6 +9,11 @@ READ_PIPE_PATH = os.environ.get("READ_PIPE_PATH")
 
 
 def read_pipe():
+    """
+    Função para execução na thread principal para recebimento de dados a
+    processar por parte do código externo
+    :return:
+    """
     if not os.path.exists(READ_PIPE_PATH):
         os.mkfifo(READ_PIPE_PATH)
     with open(READ_PIPE_PATH, 'r') as pipe:
@@ -19,7 +24,7 @@ def read_pipe():
                     target=generate_count_chars(message)
                 )
                 thread_count_chars.start()
-            else:  # Indica que a pipe pipe fechada
+            else:  # Indica que a pipe foi fechada
                 break
 
 
