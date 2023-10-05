@@ -10,5 +10,8 @@ def heart_beat():
     :return:
     """
     while True:
-        get_contract().heartBeat()
+        try:
+            get_contract().heartBeat()
+        except:
+            get_contract().connectMachine()
         time.sleep(HEART_BEAT_INTERVAL)

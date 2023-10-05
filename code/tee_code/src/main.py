@@ -24,8 +24,6 @@ def read_pipe():
                     target=generate_count_chars(message)
                 )
                 thread_count_chars.start()
-            else:  # Indica que a pipe foi fechada
-                break
 
 
 if __name__ == "__main__":

@@ -88,7 +88,6 @@ contract smartContract {
     function submitJob(string calldata url) external returns (uint _jobId) {
         _jobId = lastJobId + 1;
         lastJobId++;
-        require(connectedMachines.length > 0, "No machines to process request");
         require(jobsPerId[_jobId].jobId == 0, "Job already exists");
         jobsPerId[_jobId] = Job(_jobId, url);
         jobs.push(_jobId);
@@ -228,14 +227,14 @@ contract smartContract {
         updateMachineTimestamp(msg.sender);
         updateAvailableConnectedMachines();
         redistributeDisconnectedMachinesJobs();
-        renotifyAndRedistributeJobs();
+        renotifyMachinesJobs();
     }
 
     // ------------------ DEFINIÇÃO DE FUNÇÕES INTERNAS E PRIVADAS ------------------ //
 
 
-    // Função para 'renotificação' de jobs waiting e redistribuição de jobs processing há muito tempo
-    function renotifyAndRedistributeJobs() private {
+    // Função para 'renotificação' de jobs waiting
+    function renotifyMachinesJobs() private {
         // Renotificando máquinas com jobs waiting há muito tempo
         uint lengthWaiting = jobsWaiting.length;
         bool runSecondLoop = false;
@@ -258,38 +257,44 @@ contract smartContract {
                 }
             }
         }
-
-        // Redistribuindo jobs em timeout (AVALIAR NECESSIDADE)
-
     }
 
     // Função para distribuição dos jobs entre as máquinas disponíveis utilizando round-robin
     function addressJobs(uint[] memory jobsToAddress) private{
         uint length = jobsToAddress.length;
 
-        for(uint i = 0; i < length; i++){
-            uint jobId = jobsToAddress[i];
+        if(connectedMachines.length == 0){
+            jobsWAITINGPerAddress[address(0)] = concat(jobsWAITINGPerAddress[address(0)], jobsToAddress);
+        }else{
+            bool runSecondFor = false;
+            for(uint i = 0; i < length; i++){
+                uint jobId = jobsToAddress[i];
 
-            if(machineIndex == connectedMachines.length){
-                machineIndex = 0;
+                if(machineIndex >= connectedMachines.length){
+                    machineIndex = 0;
+                }
+                
+                jobsWAITINGPerAddress[connectedMachines[machineIndex]].push(jobId);
+
+                // Armazena dados do processamento do job
+                jobProcessingInfo[jobId] = JobProcessingInfo(block.timestamp, 0, 0, "WAITING", connectedMachines[machineIndex]);
+                jobsWaiting.push(jobId);
+                jobToIndexInWaiting[jobId] = jobsWaiting.length - 1;
+
+                machineNotified[connectedMachines[machineIndex]] = true;
+                machineIndex++;
+                runSecondFor = true;
             }
-            
-            jobsWAITINGPerAddress[connectedMachines[machineIndex]].push(jobId);
 
-            // Armazena dados do processamento do job
-            jobProcessingInfo[jobId] = JobProcessingInfo(block.timestamp, 0, 0, "WAITING", connectedMachines[machineIndex]);
-            jobsWaiting.push(jobId);
-            jobToIndexInWaiting[jobId] = jobsWaiting.length - 1;
-
-            machineNotified[connectedMachines[machineIndex]] = true;
-            machineIndex++;
-        }
-
-        for(uint i = 0; i < connectedMachines.length; i++){
-            if(machineNotified[connectedMachines[i]]){
-                emit NotifyMachines(connectedMachines[i]);
-                delete machineNotified[connectedMachines[i]];
+            if(runSecondFor){
+                for(uint i = 0; i < connectedMachines.length; i++){
+                    if(machineNotified[connectedMachines[i]]){
+                        emit NotifyMachines(connectedMachines[i]);
+                        delete machineNotified[connectedMachines[i]];
+                    }
+                }
             }
+
         }
 
     }
@@ -355,6 +360,9 @@ contract smartContract {
             delete jobsWAITINGPerAddress[disconnectedMachine];
             delete jobsPROCESSINGPerAddress[disconnectedMachine];
         }
+
+        // Redistribui jobs sem servidor
+        addressJobs(jobsWAITINGPerAddress[address(0)]);
     }
 
     // Função para atualizar estados dos nós
