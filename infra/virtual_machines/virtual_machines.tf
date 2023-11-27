@@ -35,6 +35,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
     sudo pip3 install docker jinja2 tomli tomli-w pyyaml
 
     sudo docker pull ${var.dockerhub_image_sgx}
+    sudo docker pull ${var.dockerhub_image_sgx_untrusted}
 
     git clone https://github.com/gramineproject/gsc.git
     cd gsc
@@ -48,6 +49,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
     sudo rm enclave-key.pem
 
     sudo docker run --device=/dev/sgx_enclave gsc-${var.dockerhub_image_sgx}
+    sudo docker run -e BLOCKCHAIN_ADDRESS="${var.network_interface_blockchain}:8545" -e CONTRACT_ABI="${var.contract_abi}" -e CONTRACT_ADDRESS="${var.contract_address}" -e ACCOUNT_INDEX="${var.account_index}"
     CUSTOM_DATA
   )
 
@@ -56,7 +58,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
     public_key = tls_private_key.ssh_key.public_key_openssh
   }
 
-  network_interface_ids = [azurerm_network_interface.ni_sgx.id]
+  network_interface_ids = [var.network_interface_sgx]
 }
 
 resource "azurerm_linux_virtual_machine" "vm_blockchain" {
@@ -96,5 +98,5 @@ resource "azurerm_linux_virtual_machine" "vm_blockchain" {
     public_key = tls_private_key.ssh_key.public_key_openssh
   }
 
-  network_interface_ids = [azurerm_network_interface.ni_blockchain.id]
+  network_interface_ids = [var.network_interface_blockchain]
 }

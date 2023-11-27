@@ -56,4 +56,3 @@ resource "azurerm_network_interface" "ni_blockchain" {
     public_ip_address_id          = azurerm_public_ip.public_ip_blockchain.id
   }
 }
-

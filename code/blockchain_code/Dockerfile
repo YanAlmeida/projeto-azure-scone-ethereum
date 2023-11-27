@@ -17,7 +17,7 @@ RUN npm install web3@4.0.3 --prefix /scripts
 RUN npm install @truffle/hdwallet-provider@2.1.13 --prefix /scripts
 
 # Install Ganache CLI
-RUN npm install -g ganache-cli
+RUN npm install -g ganache-cli@6.12.2
 
 # Create directory for the compiled contract
 RUN mkdir -p contractOutput
