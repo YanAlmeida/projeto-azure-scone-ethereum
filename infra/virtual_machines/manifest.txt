@@ -1,0 +1,13 @@
+# Gramine manifest template for a Dockerized Python application
+
+# Environment variables
+loader.env.READ_PIPE_PATH = "/tmp/named_pipes/write_pipe"
+loader.env.WRITE_PIPE_PATH = "/tmp/named_pipes/read_pipe"
+
+# Allowed files (including named pipes)
+sgx.allowed_files.write_pipe = "file:/tmp/named_pipes/write_pipe"
+sgx.allowed_files.read_pipe = "file:/tmp/named_pipes/read_pipe"
+
+# SGX enclave settings
+sgx.enclave_size = "1G"
+sgx.thread_num = 4

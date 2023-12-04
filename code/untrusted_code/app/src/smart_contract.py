@@ -190,3 +190,14 @@ def get_contract() -> SmartContract:
 
         CONTRACT = SmartContract(account, contract, W3)
     return CONTRACT
+
+
+def check_contract_available() -> bool:
+    """
+    Função para retorno de booleano indicando se o smart contract pode ser recuperado com sucesso
+    """
+    try:
+        get_contract()
+        return True
+    except:
+        return False

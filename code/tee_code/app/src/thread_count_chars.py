@@ -1,7 +1,7 @@
 from typing import Callable
 
 from src.safe_queue import get_queue
-from src.types import Job
+from src.user_types import Job
 
 
 def generate_count_chars(message: Job) -> Callable:

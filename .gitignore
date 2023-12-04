@@ -313,6 +313,7 @@ poetry.toml
 pyrightconfig.json
 
 ### Terraform ###
+**/tee_machine_config/
 # Local .terraform directories
 **/.terraform/*
 

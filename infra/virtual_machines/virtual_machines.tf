@@ -1,7 +1,7 @@
 resource "azurerm_linux_virtual_machine" "vm_sgx" {
   name                = "${var.prefix}-vm-sgx"
   location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = var.resource_group_name
   size                = "Standard_DC1ds_v3" # This is an SGX-enabled size; please verify if it fits your needs
   priority            = "Spot"
   eviction_policy     = "Deallocate"
@@ -39,17 +39,20 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
 
     git clone https://github.com/gramineproject/gsc.git
     cd gsc
+    git checkout c0be56daaa5a3a8a94f1b9c11a241100fec18b4b
 
     cp config.yaml.template config.yaml
-    echo "${tls_private_key.gramine_sgx_signing_key.private_key_pem}" > enclave-key.pem
+    echo "${file("./tee_machine_config/enclave-key.pem")}" > enclave-key.pem
 
-    sudo ./gsc build --insecure-args ${var.dockerhub_image_sgx} test/generic.manifest
+    echo "${file("./manifest.txt")}" >> config.manifest
+
+    sudo ./gsc build --insecure-args ${var.dockerhub_image_sgx} config.manifest
     sudo ./gsc sign-image ${var.dockerhub_image_sgx} enclave-key.pem
 
     sudo rm enclave-key.pem
 
-    sudo docker run --device=/dev/sgx_enclave gsc-${var.dockerhub_image_sgx}
-    sudo docker run -e BLOCKCHAIN_ADDRESS="${var.network_interface_blockchain}:8545" -e CONTRACT_ABI="${var.contract_abi}" -e CONTRACT_ADDRESS="${var.contract_address}" -e ACCOUNT_INDEX="${var.account_index}"
+    sudo docker run -d --device=/dev/sgx_enclave -v /tmp/named_pipes:/tmp/named_pipes gsc-${var.dockerhub_image_sgx}
+    sudo docker run -d -v /tmp/named_pipes:/tmp/named_pipes -e BLOCKCHAIN_ADDRESS="${var.network_interface_blockchain}:8545" -e CONTRACT_ABI="${var.contract_abi}" -e CONTRACT_ADDRESS="${var.contract_address}" -e ACCOUNT_INDEX="${var.account_index} ${var.dockerhub_image_sgx_untrusted}"
     CUSTOM_DATA
   )
 
@@ -64,7 +67,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
 resource "azurerm_linux_virtual_machine" "vm_blockchain" {
   name                = "${var.prefix}-vm-blockchain"
   location            = var.location
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = var.resource_group_name
   size                = "Standard_DS1_v2" # Cheapest available size, verify if it fits your needs
   priority            = "Spot"
   eviction_policy     = "Deallocate"

@@ -2,7 +2,7 @@ import threading
 import time
 from typing import List
 
-from smart_contract import get_contract
+from src.smart_contract import get_contract, check_contract_available
 from src.thread_get_jobs import get_jobs
 from src.thread_heart_beat import heart_beat
 from src.thread_send_results_blockchain import send_results_blockchain
@@ -21,6 +21,9 @@ def get_blockchain_notifications() -> List:
 
 
 if __name__ == '__main__':
+    while not check_contract_available():
+        time.sleep(POLL_INTERVAL)
+        continue
     get_contract().connectMachine()
     thread_write_pipe = threading.Thread(target=write_pipe)
     thread_write_pipe.start()
