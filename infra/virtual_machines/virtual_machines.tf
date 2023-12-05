@@ -37,22 +37,22 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
     sudo docker pull ${var.dockerhub_image_sgx}
     sudo docker pull ${var.dockerhub_image_sgx_untrusted}
 
-    git clone https://github.com/gramineproject/gsc.git
-    cd gsc
-    git checkout c0be56daaa5a3a8a94f1b9c11a241100fec18b4b
+    git clone https://github.com/YanAlmeida/gsc-v1.5-adjustment.git
+    sudo chmod -R 777 /gsc-v1.5-adjustment
+    cd gsc-v1.5-adjustment
 
     cp config.yaml.template config.yaml
     echo "${file("./tee_machine_config/enclave-key.pem")}" > enclave-key.pem
 
-    echo "${file("./manifest.txt")}" >> config.manifest
+    echo '${file("./manifest.txt")}' >> config.manifest
 
-    sudo ./gsc build --insecure-args ${var.dockerhub_image_sgx} config.manifest
+    sudo ./gsc build ${var.dockerhub_image_sgx} test/generic.manifest
     sudo ./gsc sign-image ${var.dockerhub_image_sgx} enclave-key.pem
 
     sudo rm enclave-key.pem
 
-    sudo docker run -d --device=/dev/sgx_enclave -v /tmp/named_pipes:/tmp/named_pipes gsc-${var.dockerhub_image_sgx}
-    sudo docker run -d -v /tmp/named_pipes:/tmp/named_pipes -e BLOCKCHAIN_ADDRESS="${var.network_interface_blockchain}:8545" -e CONTRACT_ABI="${var.contract_abi}" -e CONTRACT_ADDRESS="${var.contract_address}" -e ACCOUNT_INDEX="${var.account_index} ${var.dockerhub_image_sgx_untrusted}"
+    sudo docker run -d --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-${var.dockerhub_image_sgx}
+    sudo docker run -d -e BLOCKCHAIN_ADDRESS="${var.network_interface_blockchain}:8545" -e CONTRACT_ABI="${var.contract_abi}" -e CONTRACT_ADDRESS="${var.contract_address}" -e ACCOUNT_INDEX="${var.account_index} ${var.dockerhub_image_sgx_untrusted}"
     CUSTOM_DATA
   )
 

@@ -1,7 +1,25 @@
-from src.safe_queue import get_queue
 from src.smart_contract import get_contract
-from src.smart_contract import Job
 import requests
+import os
+import socket
+import json
+
+
+TEE_ADDRESS = os.environ.get("TEE_ADDRESS")
+
+
+def process_data(message):
+    """
+    Função para envio dos dados ao TEE e dos resultados à blockchain
+    :return:
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.connect(tuple(TEE_ADDRESS.split(":")))
+        sock.sendall(json.dumps(message).encode("utf-8"))
+        received = sock.recv(1024).decode("utf-8")
+        get_contract().submitResults([json.loads(received)])
+    return
 
 
 def fetch_job_text(url: str) -> str:
@@ -26,7 +44,7 @@ def get_jobs():
     for job in jobs:
         try:
             job_data = fetch_job_text(job["fileUrl"])
-            get_queue().put({**job, **{"message": job_data}})
+            process_data({**job, **{"message": job_data}})
         except requests.HTPPError:
             get_contract().submitResults([
                 {"jobId": job["jobId"],
