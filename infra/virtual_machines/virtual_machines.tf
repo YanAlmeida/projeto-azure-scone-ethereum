@@ -46,7 +46,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
 
     echo '${file("./manifest.txt")}' >> config.manifest
 
-    sudo ./gsc build ${var.dockerhub_image_sgx} test/generic.manifest
+    sudo ./gsc build ${var.dockerhub_image_sgx} config.manifest
     sudo ./gsc sign-image ${var.dockerhub_image_sgx} enclave-key.pem
 
     sudo rm enclave-key.pem
