@@ -14,6 +14,6 @@ ENV CONTRACT_ADDRESS="0x000"
 ENV ACCOUNT_INDEX=0
 ENV TEE_ADDRESS = "127.0.0.1:9090"
 
-RUN pip install -r /app/requirements.txt
+RUN pip3 install -r /app/requirements.txt
 
 ENTRYPOINT ["python3", "/app/main.py"]

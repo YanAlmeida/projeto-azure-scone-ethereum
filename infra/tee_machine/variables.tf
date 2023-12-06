@@ -1,11 +1,9 @@
 variable "prefix" {
   description = "A prefix used for naming resources."
-  default     = "myapp"
 }
 
 variable "location" {
   description = "Azure region for deployment."
-  default     = "eastus"
 }
 
 variable "resource_group_name" {
@@ -14,23 +12,19 @@ variable "resource_group_name" {
 }
 
 variable "ssh_access_ip_address" {
-  description = "A prefix used for naming resources."
-  default     = "myapp"
+  description = "IP acesso SSH."
+}
+
+variable "public_key_ssh" {
+  description = "Public key for SSH access"
 }
 
 variable "dockerhub_image_sgx" {
   description = "Docker image for SGX instance."
-  default     = "your-dockerhub-image-for-sgx"
 }
 
 variable "dockerhub_image_sgx_untrusted" {
   description = "Docker image for untrusted SGX instance run."
-  default     = "your-dockerhub-image-for-sgx"
-}
-
-variable "dockerhub_image_blockchain" {
-  description = "Docker image for blockchain instance."
-  default     = "your-dockerhub-image-for-blockchain"
 }
 
 variable "sgx_driver_distro_name" {
@@ -43,16 +37,12 @@ variable "sgx_driver_file_name" {
   default     = "sgx_linux_x64_driver_2.11.54c9c4c.bin"
 }
 
+variable "subnet_id" {
+  description = "Subnet ID"
+}
+
 variable "public_ip_blockchain" {
   description = "Public IP of the blockchain machine"
-}
-
-variable "network_interface_sgx" {
-  description = "Network interface for SGX machine"
-}
-
-variable "network_interface_blockchain" {
-  description = "Network interface for blockchain machine"
 }
 
 variable "contract_abi" {

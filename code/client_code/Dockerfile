@@ -4,8 +4,12 @@ RUN apt-get update && apt-get install -y \
     python3.8 \
     python3-pip
 
-COPY ./src /app
+RUN pip3 install locust==2.19.1
 
-RUN pip install -r /app/requirements.txt
+COPY ./app /app
 
-ENTRYPOINT ["python3", "/app/main.py"]
+RUN pip3 install -r /app/requirements.txt
+
+EXPOSE 8089
+
+ENTRYPOINT ["locust", "-f", "/app/main.py"]

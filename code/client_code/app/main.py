@@ -1,3 +1,4 @@
+# INSERIR LOCUST
 from src.smart_contract import get_contract
 
 if __name__ == '__main__':
