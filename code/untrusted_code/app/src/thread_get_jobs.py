@@ -3,6 +3,8 @@ import requests
 import os
 import socket
 import json
+import PyPDF2
+import io
 
 
 TEE_ADDRESS = os.environ.get("TEE_ADDRESS")
@@ -19,6 +21,7 @@ def process_data(message):
         sock.sendall(json.dumps(message).encode("utf-8"))
         received = sock.recv(1024).decode("utf-8")
         get_contract().submitResults([json.loads(received)])
+
     return
 
 
@@ -31,7 +34,15 @@ def fetch_job_text(url: str) -> str:
     response = requests.get(url)
     response.raise_for_status()
     response.encoding = 'utf-8'
-    return response.text
+    total_response = ""
+    
+    file = io.BytesIO(response.content)
+    
+    reader = PyPDF2.PdfReader(file)
+    for page_num in range(len(reader.pages)):
+        page = reader.pages[page_num]
+        total_response += page.extract_text()
+    return total_response
 
 
 def get_jobs():
@@ -40,12 +51,12 @@ def get_jobs():
     por ele e envio à fila
     :return:
     """
-    jobs = get_contract().getJobs()
+    jobs = get_contract().getJobsMachine()
     for job in jobs:
         try:
             job_data = fetch_job_text(job["fileUrl"])
             process_data({**job, **{"message": job_data}})
-        except requests.HTPPError:
+        except Exception:
             get_contract().submitResults([
                 {"jobId": job["jobId"],
                  "charCount": 0,

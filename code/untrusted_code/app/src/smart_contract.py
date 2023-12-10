@@ -6,6 +6,8 @@ from web3.contract import Contract
 from web3.eth import Eth
 from web3._utils.filters import LogFilter
 from hdwallet import HDWallet
+from web3.middleware import construct_sign_and_send_raw_middleware
+
 
 Job = Dict[str, Union[int, str]]
 Result = Dict[str, Union[int, str]]
@@ -187,6 +189,7 @@ def get_contract() -> SmartContract:
     if CONTRACT is None:
         account = get_account(ACCOUNT_INDEX, MNEMONIC_WORDS, DERIVATION_PATH)
         contract = W3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
+        W3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
 
         CONTRACT = SmartContract(account, contract, W3)
     return CONTRACT
@@ -199,5 +202,6 @@ def check_contract_available() -> bool:
     try:
         get_contract()
         return True
-    except:
+    except Exception as e:
+        print(e)
         return False

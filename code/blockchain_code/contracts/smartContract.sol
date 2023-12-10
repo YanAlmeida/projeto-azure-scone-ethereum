@@ -149,8 +149,9 @@ contract smartContract {
             jobProcessingInfo[job.jobId].currentStatus = "PROCESSING";
             jobsProcessing.push(job.jobId);
             jobToIndexInProcessing[job.jobId] = jobsProcessing.length - 1;
-
+            
             removeJobFromWaiting(job.jobId);
+
         }
 
         // Concatena jobs a retornar no mapping "PROCESSING" e remove lista de waiting da máquina
@@ -208,8 +209,10 @@ contract smartContract {
             disconnectedMachines.pop();
 
             // Atualiza o index do último desconectado, que foi deslocado no processo de remoção
-            addressInfo[disconnectedMachines[addressInfo[msg.sender].disconnectedIndex]].disconnectedIndex = addressInfo[msg.sender].disconnectedIndex;
-            addressInfo[msg.sender].disconnectedIndex = type(uint).max;   
+            if(disconnectedMachines.length > 0){
+                addressInfo[disconnectedMachines[addressInfo[msg.sender].disconnectedIndex]].disconnectedIndex = addressInfo[msg.sender].disconnectedIndex;
+                addressInfo[msg.sender].disconnectedIndex = type(uint).max;  
+            }
         }
 
         // Inclui na lista de conectados
@@ -363,6 +366,7 @@ contract smartContract {
 
         // Redistribui jobs sem servidor
         addressJobs(jobsWAITINGPerAddress[address(0)]);
+        delete jobsWAITINGPerAddress[address(0)];
     }
 
     // Função para atualizar estados dos nós
@@ -395,8 +399,10 @@ contract smartContract {
         connectedMachines.pop();
 
         // Atualiza o index do último conectado, que foi deslocado no processo de remoção
-        addressInfo[connectedMachines[addressInfo[_machine].connectedIndex]].connectedIndex = addressInfo[_machine].connectedIndex;
-        addressInfo[_machine].connectedIndex = type(uint).max;
+        if(connectedMachines.length > 0){
+            addressInfo[connectedMachines[addressInfo[_machine].connectedIndex]].connectedIndex = addressInfo[_machine].connectedIndex;
+            addressInfo[_machine].connectedIndex = type(uint).max;
+        }
 
         // Inclui na lista de desconectados
         disconnectedMachines.push(_machine);
