@@ -6,7 +6,7 @@ from web3.contract import Contract
 from web3.eth import Eth
 from web3._utils.filters import LogFilter
 from hdwallet import HDWallet
-from web3.middleware import construct_sign_and_send_raw_middleware
+import threading
 
 
 Job = Dict[str, Union[int, str]]
@@ -25,6 +25,8 @@ class SmartContract:
     _contract: Contract
     _w3: Web3
     _event_job_submission_filter: LogFilter = None
+    _nonce = None
+    _nonce_lock = threading.Lock()
 
     def __init__(self, account: Account, contract: Contract, w3: Web3):
         """
@@ -39,9 +41,10 @@ class SmartContract:
         self._account = account
         self._contract = contract
         self._w3 = w3
+        self._nonce = self._w3.eth.get_transaction_count(account.address)
 
     def _execute_transaction_method(
-            self, methodName: str, *args, **kwargs
+            self, methodName: str, *args, synchronous=True, **kwargs
     ) -> Tuple[Any, Any]:
         """
         Método envio de transação/execução de função de escrita no contrato
@@ -51,17 +54,20 @@ class SmartContract:
         :param kwargs: Argumentos nomeados para enviar à função
         :return: Tupla de strings contendo hash da transação e sua receita
         """
-        method = getattr(self._contract.functions, methodName)
-        nonce = self._w3.eth.get_transaction_count(self._account.address)
-        transaction = method(*args, **kwargs).build_transaction(
-            {'gas': 1000000, 'gasPrice': self._w3.to_wei('1', 'gwei'),
-             "from": self._account.address, "nonce": nonce})
-        signed_transaction = self._account.sign_transaction(transaction)
-        transaction_hash = self._w3.eth.send_raw_transaction(
-            signed_transaction.rawTransaction)
-        transaction_receipt = self._w3.eth.wait_for_transaction_receipt(
-            transaction_hash)
-        return (transaction_hash, transaction_receipt)
+        with self._nonce_lock:
+            method = getattr(self._contract.functions, methodName)
+            transaction = method(*args, **kwargs).build_transaction(
+                {'gas': 1000000, 'gasPrice': self._w3.to_wei('1', 'gwei'),
+                "from": self._account.address, "nonce": self._nonce})
+            signed_transaction = self._account.sign_transaction(transaction)
+            transaction_hash = self._w3.eth.send_raw_transaction(
+                signed_transaction.rawTransaction)
+            self._nonce += 1
+            if synchronous:
+                transaction_receipt = self._w3.eth.wait_for_transaction_receipt(
+                    transaction_hash)
+                return (transaction_hash, transaction_receipt)
+            return (transaction_hash, None)
 
     def _execute_call_method(
             self, methodName: str, *args, **kwargs
@@ -138,7 +144,7 @@ class SmartContract:
         Método para envio de heartbeat da máquina para a blockchain
         :return: Hash e receita da transação em tupla
         """
-        return self._execute_transaction_method("heartBeat")
+        return self._execute_transaction_method("heartBeat", synchronous=False)
 
     def getJobsMachine(self) -> List[Job]:
         """
@@ -165,7 +171,7 @@ class SmartContract:
         messages = [result["message"] for result in results]
 
         return self._execute_transaction_method("submitResults", jobs_ids,
-                                                char_counts, messages)
+                                                char_counts, messages, synchronous=False)
 
 
 MNEMONIC_WORDS = os.environ.get("MNEMONIC")
@@ -189,7 +195,6 @@ def get_contract() -> SmartContract:
     if CONTRACT is None:
         account = get_account(ACCOUNT_INDEX, MNEMONIC_WORDS, DERIVATION_PATH)
         contract = W3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
-        W3.middleware_onion.add(construct_sign_and_send_raw_middleware(account))
 
         CONTRACT = SmartContract(account, contract, W3)
     return CONTRACT

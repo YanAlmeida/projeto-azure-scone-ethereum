@@ -1,13 +1,17 @@
-from src.smart_contract import get_contract
+from src.smart_contract import get_contract, Job
+from typing import Dict, List
 import requests
 import os
 import socket
 import json
 import PyPDF2
 import io
+import asyncio
+import aiohttp
 
 
 TEE_ADDRESS = os.environ.get("TEE_ADDRESS")
+CONNECTION_TUPLE = tuple(TEE_ADDRESS.split(":"))
 
 
 def process_data(message):
@@ -17,32 +21,51 @@ def process_data(message):
     """
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.connect(tuple(TEE_ADDRESS.split(":")))
-        sock.sendall(json.dumps(message).encode("utf-8"))
-        received = sock.recv(1024).decode("utf-8")
-        get_contract().submitResults([json.loads(received)])
+        sock.connect((CONNECTION_TUPLE[0], int(CONNECTION_TUPLE[1])))
+        final_string = json.dumps(message) + "#END_OF_TRANSMISSION#"
+        sock.sendall(final_string.encode("utf-8"))
+        received = sock.recv(64*1024).decode("utf-8") #64 KB
+        get_contract().submitResults(json.loads(received))
 
     return
 
 
-def fetch_job_text(url: str) -> str:
+async def fetch_job_text(session: 'Session', job: Job) -> Dict[str, str]:
     """
     Função para fetch de texto referenciado pela URL do job
-    :param url: url de onde buscar o arquivo texto
-    :return: texto retornado pela URL
+    :param session: Sessão do aiohttp
+    :param job: Job cujos dados serão buscados
+    :return: Job completo, com status e message preenchidos
     """
-    response = requests.get(url)
-    response.raise_for_status()
-    response.encoding = 'utf-8'
-    total_response = ""
-    
-    file = io.BytesIO(response.content)
-    
-    reader = PyPDF2.PdfReader(file)
-    for page_num in range(len(reader.pages)):
-        page = reader.pages[page_num]
-        total_response += page.extract_text()
-    return total_response
+    try:
+        async with session.get(job['fileUrl']) as response:
+            response.raise_for_status() 
+            response.encoding = 'utf-8'
+            content = await response.read()
+            total_response = ""
+            file = io.BytesIO(content)
+            reader = PyPDF2.PdfReader(file)
+            for page_num in range(len(reader.pages)):
+                page = reader.pages[page_num]
+                total_response += page.extract_text()
+            job["message"] = total_response
+            job["status"] = "FETCHED"
+    except Exception as e:
+        job["status"] = "ERROR"
+        job["message"] = None
+    return job
+
+
+async def fetch_jobs(jobs: List[Job]):
+    """
+    Função para fetch de lista de jobs
+    :param jobs: lista de jobs
+    :return: lista de jobs completos
+    """
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_job_text(session, job) for job in jobs]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return results
 
 
 def get_jobs():
@@ -52,13 +75,15 @@ def get_jobs():
     :return:
     """
     jobs = get_contract().getJobsMachine()
-    for job in jobs:
-        try:
-            job_data = fetch_job_text(job["fileUrl"])
-            process_data({**job, **{"message": job_data}})
-        except Exception:
+    fetched_data = asyncio.run(fetch_jobs(jobs))
+    to_process = []
+    for job in fetched_data:
+        if job["status"] == "ERROR":
             get_contract().submitResults([
                 {"jobId": job["jobId"],
                  "charCount": 0,
                  "message": "ERROR:FILE_CANT_BE_FETCHED"}
             ])
+            continue
+        to_process.append(job)
+    process_data(to_process)
