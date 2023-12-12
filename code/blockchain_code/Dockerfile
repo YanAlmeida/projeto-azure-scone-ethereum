@@ -44,7 +44,7 @@ ENV MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble swe
 ENV DERIVATION_PATH="m/44'/60'/0'/0/0"
 
 # Initial balance for the accounts in Wei
-ENV INITIAL_BALANCE="1000000000000000000000000000000000"
+ENV INITIAL_BALANCE="1000000000000000"
 
 # Run Ganache CLI with the specified mnemonic and balance when the container launches
 ENTRYPOINT [ "/scripts/deployContract.sh" ]

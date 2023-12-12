@@ -50,10 +50,10 @@ contract smartContract {
     mapping(address => uint[]) public jobsPROCESSINGPerAddress;
     mapping(address => uint[]) public jobsPROCESSEDPerAddress;
 
-    mapping(uint => uint) private jobToIndexInProcessingMachine; // Para facilitar remoção de jobs do estado 'processing'
+    mapping(uint => uint) public jobToIndexInProcessingMachine; // Para facilitar remoção de jobs do estado 'processing'
 
-    mapping(uint => uint) private jobToIndexInWaiting;
-    mapping(uint => uint) private jobToIndexInProcessing;
+    mapping(uint => uint) public jobToIndexInWaiting;
+    mapping(uint => uint) public jobToIndexInProcessing;
     mapping(uint => Job) public jobsPerId;
     uint[] public jobsWaiting;
     uint[] public jobsProcessing;
@@ -151,7 +151,6 @@ contract smartContract {
             jobToIndexInProcessing[job.jobId] = jobsProcessing.length - 1;
             
             removeJobFromWaiting(job.jobId);
-
         }
 
         // Concatena jobs a retornar no mapping "PROCESSING" e remove lista de waiting da máquina
@@ -209,7 +208,7 @@ contract smartContract {
             disconnectedMachines.pop();
 
             // Atualiza o index do último desconectado, que foi deslocado no processo de remoção
-            if(disconnectedMachines.length > 0){
+            if(disconnectedMachines.length > 0 && addressInfo[msg.sender].disconnectedIndex < disconnectedMachines.length){
                 addressInfo[disconnectedMachines[addressInfo[msg.sender].disconnectedIndex]].disconnectedIndex = addressInfo[msg.sender].disconnectedIndex;
                 addressInfo[msg.sender].disconnectedIndex = type(uint).max;  
             }
@@ -230,6 +229,7 @@ contract smartContract {
         updateMachineTimestamp(msg.sender);
         updateAvailableConnectedMachines();
         redistributeDisconnectedMachinesJobs();
+        readdressProcessingJobs();
         renotifyMachinesJobs();
     }
 
@@ -258,6 +258,23 @@ contract smartContract {
                     emit NotifyMachines(connectedMachines[i]);
                     delete machineNotified[connectedMachines[i]];
                 }
+            }
+        }
+    }
+
+    // Função para 'retornar' jobs processing há muito tempo ao estado waiting
+    function readdressProcessingJobs() private {
+        uint lengthProcessing = jobsProcessing.length;
+        uint[] memory readdressJobs = new uint[](1);
+
+        for(uint i = 0; i < lengthProcessing; i++){
+            uint _jobId = jobsProcessing[i];
+            uint processingTimestamp = jobProcessingInfo[_jobId].processingTimestamp;
+            uint processingTime = block.timestamp - processingTimestamp;
+            if( processingTime > jobProcessingMaxTime){
+                removeJobFromProcessing(jobProcessingInfo[_jobId].responsibleMachine, _jobId);
+                readdressJobs[0] = _jobId;
+                addressJobs(readdressJobs);
             }
         }
     }
@@ -312,7 +329,7 @@ contract smartContract {
         jobsPROCESSINGPerAddress[_machine].pop();
 
         // Atualiza mapping de indexes
-        if(jobsPROCESSINGPerAddress[_machine].length > 0){
+        if(jobsPROCESSINGPerAddress[_machine].length > 0 && index < jobsPROCESSINGPerAddress[_machine].length){
             jobToIndexInProcessingMachine[jobsPROCESSINGPerAddress[_machine][index]] = index;
         }
         delete jobToIndexInProcessingMachine[jobIdToRemove];
@@ -325,7 +342,7 @@ contract smartContract {
         jobsProcessing.pop();
 
         // Atualiza mapping de indexes
-        if(jobsProcessing.length > 0){
+        if(jobsProcessing.length > 0 && indexArray < jobsProcessing.length){
             jobToIndexInProcessing[jobsProcessing[indexArray]] = indexArray;
         }
         delete jobToIndexInProcessing[jobIdToRemove];
@@ -343,7 +360,7 @@ contract smartContract {
         jobsWaiting.pop();
 
         // Atualiza mapping de indexes
-        if(jobsWaiting.length > 0){
+        if(jobsWaiting.length > 0 && indexArray < jobsWaiting.length){
             jobToIndexInWaiting[jobsWaiting[indexArray]] = indexArray;
         }
         delete jobToIndexInWaiting[jobIdToRemove];
@@ -399,7 +416,7 @@ contract smartContract {
         connectedMachines.pop();
 
         // Atualiza o index do último conectado, que foi deslocado no processo de remoção
-        if(connectedMachines.length > 0){
+        if(connectedMachines.length > 0 && addressInfo[_machine].connectedIndex < connectedMachines.length){
             addressInfo[connectedMachines[addressInfo[_machine].connectedIndex]].connectedIndex = addressInfo[_machine].connectedIndex;
             addressInfo[_machine].connectedIndex = type(uint).max;
         }
