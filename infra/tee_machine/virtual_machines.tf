@@ -52,7 +52,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
     sudo rm enclave-key.pem
 
     sudo docker run -d --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-${var.dockerhub_image_sgx}
-    sudo docker run -d -e BLOCKCHAIN_ADDRESS="http://${var.public_ip_blockchain}:8545" -e CONTRACT_ABI='${var.contract_abi}' -e CONTRACT_ADDRESS="${var.contract_address}" -e ACCOUNT_INDEX="${var.account_index}" ${var.dockerhub_image_sgx_untrusted}
+    sudo docker run -d --network="host" -e BLOCKCHAIN_ADDRESS="http://${var.public_ip_blockchain}:8545" -e CONTRACT_ABI='${var.contract_abi}' -e CONTRACT_ADDRESS="${var.contract_address}" -e ACCOUNT_INDEX="${var.account_index}" ${var.dockerhub_image_sgx_untrusted}
     CUSTOM_DATA
   )
 
