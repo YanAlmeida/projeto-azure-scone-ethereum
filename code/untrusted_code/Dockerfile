@@ -13,7 +13,11 @@ ENV CONTRACT_ABI="0x000"
 ENV CONTRACT_ADDRESS="0x000"
 ENV ACCOUNT_INDEX=0
 ENV TEE_ADDRESS="127.0.0.1:9090"
+ENV NEW_RELIC_CONFIG_FILE="/app/newrelic.ini"
+
 
 RUN pip3 install -r /app/requirements.txt
+RUN pip3 install newrelic
+RUN newrelic-admin validate-config /app/newrelic.ini
 
-ENTRYPOINT ["python3", "/app/main.py"]
+ENTRYPOINT ["newrelic-admin", "run-program", "python3", "/app/main.py"]

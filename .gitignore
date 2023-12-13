@@ -350,3 +350,4 @@ override.tf.json
 terraform.rc
 
 # End of https://www.toptal.com/developers/gitignore/api/python,node,terraform
+newrelic.ini

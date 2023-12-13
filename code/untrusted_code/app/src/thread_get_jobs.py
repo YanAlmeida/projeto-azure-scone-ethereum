@@ -8,13 +8,15 @@ import PyPDF2
 import io
 import asyncio
 import aiohttp
+import newrelic.agent
 
 
 TEE_ADDRESS = os.environ.get("TEE_ADDRESS")
 CONNECTION_TUPLE = tuple(TEE_ADDRESS.split(":"))
 
 
-def process_data(message):
+@newrelic.agent.function_trace()
+def send_data_to_tee(message):
     """
     Função para envio dos dados ao TEE e dos resultados à blockchain
     :return:
@@ -25,9 +27,8 @@ def process_data(message):
         final_string = json.dumps(message) + "#END_OF_TRANSMISSION#"
         sock.sendall(final_string.encode("utf-8"))
         received = sock.recv(64*1024).decode("utf-8") #64 KB
-        get_contract().submitResults(json.loads(received))
 
-    return
+    return received
 
 
 async def fetch_job_text(session: 'Session', job: Job) -> Dict[str, str]:
@@ -56,6 +57,7 @@ async def fetch_job_text(session: 'Session', job: Job) -> Dict[str, str]:
     return job
 
 
+@newrelic.agent.function_trace()
 async def fetch_jobs(jobs: List[Job]):
     """
     Função para fetch de lista de jobs
@@ -68,7 +70,8 @@ async def fetch_jobs(jobs: List[Job]):
         return results
 
 
-def get_jobs():
+@newrelic.agent.function_trace()
+def get_and_process_jobs():
     """
     Thread para recuperação dos Jobs no contrato, busca dos dados referenciados
     por ele e envio à fila
@@ -84,6 +87,8 @@ def get_jobs():
                  "charCount": 0,
                  "message": "ERROR:FILE_CANT_BE_FETCHED"}
             ])
+            newrelic.agent.record_exception()
             continue
         to_process.append(job)
-    process_data(to_process)
+    final_data = send_data_to_tee(to_process)
+    get_contract().submitResults(json.loads(final_data))

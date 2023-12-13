@@ -7,6 +7,7 @@ from web3.eth import Eth
 from web3._utils.filters import LogFilter
 from hdwallet import HDWallet
 import threading
+import newrelic.agent
 
 
 Job = Dict[str, Union[int, str]]
@@ -146,6 +147,7 @@ class SmartContract:
         """
         return self._execute_transaction_method("heartBeat", synchronous=False)
 
+    @newrelic.agent.function_trace()
     def getJobsMachine(self) -> List[Job]:
         """
         Método para recuperação dos jobs em espera alocados para a máquina
@@ -160,6 +162,7 @@ class SmartContract:
         return [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in
                 zip(jobs_ids, files_urls)]
 
+    @newrelic.agent.function_trace()
     def submitResults(self, results: List[Result]) -> Tuple[Any, Any]:
         """
         Método para envio de resultados de jobs à blockchain
@@ -200,6 +203,7 @@ def get_contract() -> SmartContract:
     return CONTRACT
 
 
+@newrelic.agent.background_task()
 def check_contract_available() -> bool:
     """
     Função para retorno de booleano indicando se o smart contract pode ser recuperado com sucesso

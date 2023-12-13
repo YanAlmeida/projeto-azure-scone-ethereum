@@ -3,8 +3,9 @@ import time
 from typing import List
 
 from src.smart_contract import get_contract, check_contract_available
-from src.thread_get_jobs import get_jobs
+from src.thread_get_jobs import get_and_process_jobs
 from src.thread_heart_beat import heart_beat
+import newrelic.agent
 
 POLL_INTERVAL = 10  # seconds
 
@@ -33,6 +34,6 @@ if __name__ == '__main__':
 
     while True:
         if len(get_blockchain_notifications()) > 0:
-            thread_get_jobs = threading.Thread(target=get_jobs)
+            thread_get_jobs = threading.Thread(target=get_and_process_jobs)
             thread_get_jobs.start()
         time.sleep(POLL_INTERVAL)
