@@ -15,7 +15,7 @@ TEE_ADDRESS = os.environ.get("TEE_ADDRESS")
 CONNECTION_TUPLE = tuple(TEE_ADDRESS.split(":"))
 
 
-@newrelic.agent.function_trace()
+@newrelic.agent.background_task()
 def send_data_to_tee(message):
     """
     Função para envio dos dados ao TEE e dos resultados à blockchain
@@ -57,7 +57,7 @@ async def fetch_job_text(session: 'Session', job: Job) -> Dict[str, str]:
     return job
 
 
-@newrelic.agent.function_trace()
+@newrelic.agent.background_task()
 async def fetch_jobs(jobs: List[Job]):
     """
     Função para fetch de lista de jobs
@@ -70,7 +70,6 @@ async def fetch_jobs(jobs: List[Job]):
         return results
 
 
-@newrelic.agent.function_trace()
 def get_and_process_jobs():
     """
     Thread para recuperação dos Jobs no contrato, busca dos dados referenciados

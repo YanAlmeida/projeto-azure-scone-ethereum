@@ -1,3 +1,3 @@
 output "public_ip_sgx" {
-  value = azurerm_public_ip.public_ip_sgx.ip_address
+  value = var.generate_public_ip ? azurerm_public_ip.public_ip_sgx[0].ip_address : null
 }

@@ -1,5 +1,5 @@
 resource "azurerm_linux_virtual_machine" "vm_sgx" {
-  name                = "${var.prefix}-vm-sgx"
+  name                = "${var.prefix}-vm-sgx-${var.account_index}"
   location            = var.location
   resource_group_name = var.resource_group_name
   size                = "Standard_DC1ds_v3" # This is an SGX-enabled size; please verify if it fits your needs
@@ -9,7 +9,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
   admin_username = "ubuntu"
 
   os_disk {
-    name          = "${var.prefix}-osdisk-sgx"
+    name          = "${var.prefix}-osdisk-sgx-${var.account_index}"
     caching       = "ReadWrite"
     storage_account_type = "Standard_LRS"
   }
@@ -42,9 +42,9 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
     cd gsc-v1.5-adjustment
 
     cp config.yaml.template config.yaml
-    echo "${file("./tee_machine_config/enclave-key.pem")}" > enclave-key.pem
+    echo "${file(var.enclave_key_path)}" > enclave-key.pem
 
-    echo '${file("./manifest.txt")}' >> config.manifest
+    echo '${file(var.manifest_path)}' >> config.manifest
 
     sudo ./gsc build ${var.dockerhub_image_sgx} config.manifest
     sudo ./gsc sign-image ${var.dockerhub_image_sgx} enclave-key.pem
@@ -52,7 +52,16 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
     sudo rm enclave-key.pem
 
     sudo docker run -d --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-${var.dockerhub_image_sgx}
-    sudo docker run -d --network="host" -e BLOCKCHAIN_ADDRESS="http://${var.public_ip_blockchain}:8545" -e CONTRACT_ABI='${var.contract_abi}' -e CONTRACT_ADDRESS="${var.contract_address}" -e ACCOUNT_INDEX="${var.account_index}" ${var.dockerhub_image_sgx_untrusted}
+
+    for i in $(seq ${var.account_index} $((${var.account_index} + ${var.number_untrusted_containers} - 1))); do
+      sudo docker run -d --network="host" \
+        -e BLOCKCHAIN_ADDRESS="http://${var.public_ip_blockchain}:8545" \
+        -e CONTRACT_ABI='${var.contract_abi}' \
+        -e CONTRACT_ADDRESS="${var.contract_address}" \
+        -e ACCOUNT_INDEX="$i" \
+        ${var.dockerhub_image_sgx_untrusted}
+    done
+
     sudo docker run -d --name newrelic-infra --network=host --cap-add=SYS_PTRACE --privileged --pid=host -v "/:/host:ro" -v "/var/run/docker.sock:/var/run/docker.sock" -e NRIA_LICENSE_KEY=3daa2a21235d6c7fdb2c71af4262afddFFFFNRAL newrelic/infrastructure:latest
     CUSTOM_DATA
   )

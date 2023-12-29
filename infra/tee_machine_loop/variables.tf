@@ -55,9 +55,9 @@ variable "contract_address" {
   default     = "0x8CdaF0CD259887258Bc13a92C0a6dA92698644C0"
 }
 
-variable "account_index" {
-  description = "Index da conta utilizada pela máquina SGX"
-  default     = 0
+variable "number_machines" {
+    description = "Numero de maquinas a criar"
+    default     = 1
 }
 
 variable "enclave_key_path" {
@@ -74,6 +74,6 @@ variable "generate_public_ip" {
 }
 
 variable "number_untrusted_containers" {
-  description = "Numero de containers nao confiaveis a gerar"
+  description = "Se deve ou não gerar ip publico para as máquinas"
   type        = number
 }

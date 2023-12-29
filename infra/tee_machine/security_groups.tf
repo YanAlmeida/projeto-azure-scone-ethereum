@@ -1,6 +1,6 @@
 
 resource "azurerm_network_security_group" "sg_sgx" {
-  name                = "${var.prefix}-sg-sgx"
+  name                = "${var.prefix}-sg-sgx-${var.account_index}"
   location            = var.location
   resource_group_name = var.resource_group_name
 

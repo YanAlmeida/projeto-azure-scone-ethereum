@@ -79,8 +79,8 @@ contract smartContract {
     uint public jobUpdateInterval = 1 minutes;
 
     // Variáveis para auxílio em timeouts
-    uint public jobWaitingMaxTime = 5 minutes;
-    uint public jobProcessingMaxTime = 5 minutes;
+    uint public jobWaitingMaxTime = 1 minutes;
+    uint public jobProcessingMaxTime = 2 minutes;
 
     // ------------------ DEFINIÇÃO DE FUNÇÕES EXTERNAS E PÚBLICAS ------------------ //
 
@@ -408,22 +408,24 @@ contract smartContract {
 
     // Função para remoção de nó inativo 
     function updateMachineDisconnected(address _machine) private {
-        // Altera flag 'isConnected'
-        addressInfo[_machine].isConnected = false;
-        
-        // Remove da lista de conectados
-        connectedMachines[addressInfo[_machine].connectedIndex] = connectedMachines[connectedMachines.length - 1];
-        connectedMachines.pop();
+        if(isMachineConnected(_machine)){
+            // Altera flag 'isConnected'
+            addressInfo[_machine].isConnected = false;
+            
+            // Remove da lista de conectados
+            connectedMachines[addressInfo[_machine].connectedIndex] = connectedMachines[connectedMachines.length - 1];
+            connectedMachines.pop();
 
-        // Atualiza o index do último conectado, que foi deslocado no processo de remoção
-        if(connectedMachines.length > 0 && addressInfo[_machine].connectedIndex < connectedMachines.length){
-            addressInfo[connectedMachines[addressInfo[_machine].connectedIndex]].connectedIndex = addressInfo[_machine].connectedIndex;
-            addressInfo[_machine].connectedIndex = type(uint).max;
+            // Atualiza o index do último conectado, que foi deslocado no processo de remoção
+            if(connectedMachines.length > 0 && addressInfo[_machine].connectedIndex < connectedMachines.length){
+                addressInfo[connectedMachines[addressInfo[_machine].connectedIndex]].connectedIndex = addressInfo[_machine].connectedIndex;
+                addressInfo[_machine].connectedIndex = type(uint).max;
+            }
+
+            // Inclui na lista de desconectados
+            disconnectedMachines.push(_machine);
+            addressInfo[_machine].disconnectedIndex = disconnectedMachines.length - 1;
         }
-
-        // Inclui na lista de desconectados
-        disconnectedMachines.push(_machine);
-        addressInfo[_machine].disconnectedIndex = disconnectedMachines.length - 1;
     }
 
     // Função para checagem se nó está ativo
