@@ -267,8 +267,8 @@ contract smartContract {
         uint lengthProcessing = jobsProcessing.length;
         uint[] memory readdressJobs = new uint[](1);
 
-        for(uint i = 0; i < lengthProcessing; i++){
-            uint _jobId = jobsProcessing[i];
+        for(uint i = lengthProcessing; i > 0; i--){
+            uint _jobId = jobsProcessing[i - 1];
             uint processingTimestamp = jobProcessingInfo[_jobId].processingTimestamp;
             uint processingTime = block.timestamp - processingTimestamp;
             if( processingTime > jobProcessingMaxTime){
@@ -390,8 +390,8 @@ contract smartContract {
     function updateAvailableConnectedMachines() private {
         uint length = connectedMachines.length;
 
-        for(uint i = 0; i < length; i++){
-            address connectedMachine = connectedMachines[i];
+        for(uint i = length; i > 0; i--){
+            address connectedMachine = connectedMachines[i - 1];
 
             if(!isMachineAvailable(connectedMachine)){
                 updateMachineDisconnected(connectedMachine);
@@ -419,8 +419,8 @@ contract smartContract {
             // Atualiza o index do último conectado, que foi deslocado no processo de remoção
             if(connectedMachines.length > 0 && addressInfo[_machine].connectedIndex < connectedMachines.length){
                 addressInfo[connectedMachines[addressInfo[_machine].connectedIndex]].connectedIndex = addressInfo[_machine].connectedIndex;
-                addressInfo[_machine].connectedIndex = type(uint).max;
             }
+            addressInfo[_machine].connectedIndex = type(uint).max;
 
             // Inclui na lista de desconectados
             disconnectedMachines.push(_machine);
