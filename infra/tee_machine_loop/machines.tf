@@ -2,7 +2,7 @@ module "vm_instance" {
     source                        = "../tee_machine"
     count                         = var.number_machines
 
-    account_index                 = count.index == 0 ? count.index : count.index + var.number_untrusted_containers
+    account_index                 = count.index == 0 ? count.index : count.index + var.number_untrusted_containers - 1
     subnet_id                     = var.subnet_id
     public_key_ssh                = var.public_key_ssh
     ssh_access_ip_address         = var.ssh_access_ip_address
