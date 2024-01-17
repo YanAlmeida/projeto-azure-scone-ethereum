@@ -1,6 +1,7 @@
 import json
 from typing import List, Dict, Any
 from src.user_types import Job
+import newrelic.agent
 
 
 def receive_data(conn: 'Connection') -> str:
@@ -45,6 +46,15 @@ def generate_count_chars(messages: List[Job]) -> List[Dict[str, Any]]:
     return [count_chars(message) for message in messages]
 
 
+@newrelic.agent.background_task()
+def process_data_r(conn: 'Connection'):
+    with conn:
+        data = receive_data(conn)
+        json_data = json.loads(data)
+        result = json.dumps(generate_count_chars(json_data)).encode("utf-8")
+        conn.sendall(result)
+
+
 def accept_connection(conn: 'Connection'):
     """
     Função para recebimento de dados e retorno de função para thread de processamento/resposta
@@ -52,10 +62,6 @@ def accept_connection(conn: 'Connection'):
     """
     
     def process_data():
-        with conn:
-            data = receive_data(conn)
-            json_data = json.loads(data)
-            result = json.dumps(generate_count_chars(json_data)).encode("utf-8")
-            conn.sendall(result)
+        process_data_r(conn)
 
     return process_data
