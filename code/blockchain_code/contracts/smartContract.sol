@@ -67,6 +67,7 @@ contract smartContract {
     // Definição de mappings e arrays para controle das máquinas relacionadas ao contrato
     mapping(address => AddressInfo) private addressInfo;
     mapping(address => bool) private machineNotified;
+    mapping(address => bool) private machineGetJobs;
 
     address[] public connectedMachines;
     address[] public disconnectedMachines;
@@ -76,11 +77,11 @@ contract smartContract {
 
     // Definição de variáveis para auxílio na criação de Jobs (lastJobId) e na validação de máquinas disponíveis (jobUpdateInterval)
     uint private lastJobId = 0;
-    uint public jobUpdateInterval = 1 minutes;
+    uint public jobUpdateInterval = 20 minutes;
 
     // Variáveis para auxílio em timeouts
-    uint public jobWaitingMaxTime = 1 minutes;
-    uint public jobProcessingMaxTime = 2 minutes;
+    uint public jobWaitingMaxTime = 10 minutes;
+    uint public jobProcessingMaxTime = 10 minutes;
 
     // ------------------ DEFINIÇÃO DE FUNÇÕES EXTERNAS E PÚBLICAS ------------------ //
 
@@ -156,7 +157,8 @@ contract smartContract {
         // Concatena jobs a retornar no mapping "PROCESSING" e remove lista de waiting da máquina
         jobsPROCESSINGPerAddress[msg.sender] = concat(jobsPROCESSINGPerAddress[msg.sender], jobsReturn);
         delete jobsWAITINGPerAddress[msg.sender];
-        
+        machineGetJobs[msg.sender] = false;
+
         emit ReturnJobs(msg.sender, jobIds, fileUrls);
         return (jobIds, fileUrls);
     }
@@ -308,8 +310,10 @@ contract smartContract {
 
             if(runSecondFor){
                 for(uint i = 0; i < connectedMachines.length; i++){
-                    if(machineNotified[connectedMachines[i]]){
+                    if(machineNotified[connectedMachines[i]] && !machineGetJobs[connectedMachines[i]]){
                         emit NotifyMachines(connectedMachines[i]);
+                        
+                        machineGetJobs[connectedMachines[i]] = true;
                         delete machineNotified[connectedMachines[i]];
                     }
                 }
