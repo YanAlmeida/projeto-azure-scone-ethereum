@@ -25,7 +25,7 @@ class SmartContract:
     _contract: Contract
     _w3: Web3
     _event_job_submission_filter: LogFilter = None
-    _nonce_lock = threading.Lock()
+    _nonce_lock = None
 
     def __init__(self, account: Account, contract: Contract, w3: Web3):
         """
@@ -40,6 +40,7 @@ class SmartContract:
         self._account = account
         self._contract = contract
         self._w3 = w3
+        self._nonce_lock = threading.Lock()
 
     def _execute_transaction_method(
             self, methodName: str, *args, synchronous=True, **kwargs
@@ -93,14 +94,14 @@ class SmartContract:
                 )
         return self._event_job_submission_filter
 
-    def submitJob(self, url: str) -> int:
+    def submitJob(self, url: str, synchronous: bool = True) -> int:
         """
         Método para submissão de novo job
         :param url: URL contendo arquivo com os dados do job
         :return: Inteiro representando o ID do job criado no contrato
         inteligente
         """
-        _, receipt = self._execute_transaction_method("submitJob", url)
+        _, receipt = self._execute_transaction_method("submitJob", url, synchronous=synchronous)
         logs = self._contract.events.ReturnUInt().process_receipt(receipt)
         return logs[0]['args']['_value']
 
@@ -173,28 +174,27 @@ class SmartContract:
 
 MNEMONIC_WORDS = os.environ.get("MNEMONIC", "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat")
 DERIVATION_PATH = os.environ.get("DERIVATION_PATH", "m/44'/60'/0'/0")
-BLOCKCHAIN_ADDRESS = os.environ.get("BLOCKCHAIN_ADDRESS", "http://20.246.33.250:8545")
+BLOCKCHAIN_ADDRESS = os.environ.get("BLOCKCHAIN_ADDRESS", "http://20.230.18.237:8545")
 CONTRACT_ABI = os.environ.get("CONTRACT_ABI", '[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"}],"name":"NotifyMachines","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"_jobId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"_charCount","type":"uint256"},{"indexed":false,"internalType":"string","name":"_message","type":"string"}],"name":"NotifyResult","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"},{"indexed":false,"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"},{"indexed":false,"internalType":"string[]","name":"_filesUrls","type":"string[]"}],"name":"ReturnJobs","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"},{"indexed":false,"internalType":"uint256","name":"_value","type":"uint256"}],"name":"ReturnUInt","type":"event"},{"inputs":[],"name":"connectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"connectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"disconnectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"disconnectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getJobs","outputs":[{"internalType":"uint256[]","name":"jobIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getJobsMachine","outputs":[{"internalType":"uint256[]","name":"jobIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"name":"getResult","outputs":[{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"heartBeat","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobProcessingInfo","outputs":[{"internalType":"uint256","name":"waitingTimestamp","type":"uint256"},{"internalType":"uint256","name":"processingTimestamp","type":"uint256"},{"internalType":"uint256","name":"processedTimestamp","type":"uint256"},{"internalType":"string","name":"currentStatus","type":"string"},{"internalType":"address","name":"responsibleMachine","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobProcessingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobToIndexInProcessing","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobToIndexInProcessingMachine","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobToIndexInWaiting","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobUpdateInterval","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobWaitingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobs","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPROCESSEDPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPROCESSINGPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"string","name":"fileUrl","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsProcessed","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsProcessing","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsWAITINGPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsWaiting","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"resultsPerJobId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"url","type":"string"}],"name":"submitJob","outputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"},{"internalType":"uint256[]","name":"_charCounts","type":"uint256[]"},{"internalType":"string[]","name":"_messages","type":"string[]"}],"name":"submitResults","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
 CONTRACT_ADDRESS = os.environ.get("CONTRACT_ADDRESS", '0x8CdaF0CD259887258Bc13a92C0a6dA92698644C0')
-ACCOUNT_INDEX = os.environ.get("ACCOUNT_INDEX", 999)
 
 W3 = Web3(Web3.HTTPProvider(BLOCKCHAIN_ADDRESS))
 
-CONTRACT = None
+CONTRACT = {}
 
 
-def get_contract() -> SmartContract:
+def get_contract(account_number) -> SmartContract:
     """
     Função para retorno de objeto para interação com o contrato inteligente.
     :return: Instância de 'SmartContract' (única na aplicação)
     """
     global CONTRACT
-    if CONTRACT is None:
-        account = get_account(ACCOUNT_INDEX, MNEMONIC_WORDS, DERIVATION_PATH)
+    if CONTRACT.get(account_number) is None:
+        account = get_account(account_number, MNEMONIC_WORDS, DERIVATION_PATH)
         contract = W3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
 
-        CONTRACT = SmartContract(account, contract, W3)
-    return CONTRACT
+        CONTRACT[account_number] = SmartContract(account, contract, W3)
+    return CONTRACT[account_number]
 
 
 def check_contract_available() -> bool:
