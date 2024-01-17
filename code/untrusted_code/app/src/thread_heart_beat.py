@@ -1,7 +1,7 @@
 from src.smart_contract import get_contract
 import time
 
-HEART_BEAT_INTERVAL = 20  # seconds
+HEART_BEAT_INTERVAL = 900  # seconds
 
 
 def heart_beat():
