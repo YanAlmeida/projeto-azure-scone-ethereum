@@ -61,8 +61,17 @@ class SmartContract:
                 {'gas': 1000000, 'gasPrice': self._w3.to_wei('1', 'gwei'),
                 "from": self._account.address, "nonce": self._nonce})
             signed_transaction = self._account.sign_transaction(transaction)
-            transaction_hash = self._w3.eth.send_raw_transaction(
-                signed_transaction.rawTransaction)
+            try:
+                transaction_hash = self._w3.eth.send_raw_transaction(
+                    signed_transaction.rawTransaction)
+            except:
+                self._nonce = self._w3.eth.get_transaction_count(self._account.address)
+                transaction = method(*args, **kwargs).build_transaction(
+                    {'gas': 1000000, 'gasPrice': self._w3.to_wei('1', 'gwei'),
+                    "from": self._account.address, "nonce": self._nonce})
+                signed_transaction = self._account.sign_transaction(transaction)
+                transaction_hash = self._w3.eth.send_raw_transaction(
+                    signed_transaction.rawTransaction)
             self._nonce += 1
             if synchronous:
                 transaction_receipt = self._w3.eth.wait_for_transaction_receipt(
@@ -82,20 +91,6 @@ class SmartContract:
         """
         method = getattr(self._contract.functions, methodName)
         return method(*args, **kwargs).call()
-
-    def get_job_notification_filter(self) -> LogFilter:
-        """
-        Função para obtenção de LogFilter analisando eventos de
-        alocação de jobs para a máquina no contrato inteligente
-        :return: Objeto LogFilter para acesso aos eventos
-        """
-        if self._event_job_submission_filter is None:
-            self._event_job_submission_filter = \
-                self._contract.events.NotifyMachines.create_filter(
-                    fromBlock='latest',
-                    argument_filters={'_machine': self._account.address}
-                )
-        return self._event_job_submission_filter
 
     def submitJob(self, url: str) -> int:
         """
@@ -153,14 +148,13 @@ class SmartContract:
         Método para recuperação dos jobs em espera alocados para a máquina
         :return: Lista de 'Job'
         """
-        _, receipt = self._execute_transaction_method("getJobsMachine")
-        logs = self._contract.events.ReturnJobs().process_receipt(receipt)
+        result = self._execute_call_method("getJobsMachineView")
+        jobs_returned = [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in zip(result[0], result[1]) if jobId != 0]
 
-        jobs_ids = logs[0]['args']['_jobsIds']
-        files_urls = logs[0]['args']['_filesUrls']
+        if jobs_returned:
+            self._execute_transaction_method("getJobsMachine", result[0])
 
-        return [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in
-                zip(jobs_ids, files_urls)]
+        return jobs_returned
 
     @newrelic.agent.background_task()
     def submitResults(self, results: List[Result]) -> Tuple[Any, Any]:

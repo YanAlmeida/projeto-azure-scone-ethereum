@@ -70,24 +70,31 @@ async def fetch_jobs(jobs: List[Job]):
         return results
 
 
-def get_and_process_jobs():
+def get_and_process_jobs(jobs: List[Job]):
     """
-    Thread para recuperação dos Jobs no contrato, busca dos dados referenciados
-    por ele e envio à fila
+    Função que gera Thread para recuperação dos Jobs no contrato
+    :param jobs: lista de jobs
     :return:
     """
-    jobs = get_contract().getJobsMachine()
-    fetched_data = asyncio.run(fetch_jobs(jobs))
-    to_process = []
-    for job in fetched_data:
-        if job["status"] == "ERROR":
-            get_contract().submitResults([
-                {"jobId": job["jobId"],
-                 "charCount": 0,
-                 "message": "ERROR:FILE_CANT_BE_FETCHED"}
-            ])
-            newrelic.agent.record_exception()
-            continue
-        to_process.append(job)
-    final_data = send_data_to_tee(to_process)
-    get_contract().submitResults(json.loads(final_data))
+
+    def get_and_process_jobs_real():
+        """
+        Thread para recuperação dos Jobs no contrato, busca dos dados referenciados
+        por ele e retorno à blockchain
+        :return:
+        """
+        fetched_data = asyncio.run(fetch_jobs(jobs))
+        to_process = []
+        for job in fetched_data:
+            if job["status"] == "ERROR":
+                get_contract().submitResults([
+                    {"jobId": job["jobId"],
+                    "charCount": 0,
+                    "message": "ERROR:FILE_CANT_BE_FETCHED"}
+                ])
+                newrelic.agent.record_exception()
+                continue
+            to_process.append(job)
+        final_data = send_data_to_tee(to_process)
+        get_contract().submitResults(json.loads(final_data))
+    return get_and_process_jobs_real
