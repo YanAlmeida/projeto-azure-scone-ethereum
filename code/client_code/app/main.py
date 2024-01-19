@@ -3,7 +3,7 @@ from src.smart_contract import CONTRACT, get_contract  # Import your get_contrac
 import time
 
 class SmartContractUser(User):
-    wait_time = lambda _: 3  # Define wait time between tasks
+    wait_time = lambda _: 1  # Define wait time between tasks
     _user_count = 99
 
     def on_start(self):
@@ -52,14 +52,15 @@ class SmartContractUser(User):
     #                 exception=Exception(f"Failed job"),
     #                 response_length=0,  # Size of the response (in bytes)
     #             )
-    #             events.request.fire(
-    #                 request_type="smart_contract_interaction",
-    #                 name="submit_job_and_get_result",
-    #                 response_time=total_time*1000,
-    #                 response_length=result["charCount"],
-    #                 exception=None,
-    #                 context={}
-    #             )
+    #             else:
+    #                 events.request.fire(
+    #                     request_type="smart_contract_interaction",
+    #                     name="submit_job_and_get_result",
+    #                     response_time=total_time*1000,
+    #                     response_length=result["charCount"],
+    #                     exception=None,
+    #                     context={}
+    #                 )
     #             print(f"Total time for job {job_id}: {total_time} seconds")
     #             return 
 

@@ -8,10 +8,16 @@ from web3._utils.filters import LogFilter
 from hdwallet import HDWallet
 import threading
 import newrelic.agent
+import asyncio
 
 
 Job = Dict[str, Union[int, str]]
 Result = Dict[str, Union[int, str]]
+
+
+def split(list_a: list, chunk_size: int):
+  for i in range(0, len(list_a), chunk_size):
+    yield list_a[i:i + chunk_size]
 
 
 def get_account(index, mnemonic, derivation_path):
@@ -44,6 +50,10 @@ class SmartContract:
         self._w3 = w3
         self._nonce = self._w3.eth.get_transaction_count(account.address)
 
+    async def _execute_transaction_method_asyncio(self, method_name: str, *args, **kwargs):
+        result = await asyncio.get_running_loop().run_in_executor(None, self._execute_transaction_method, method_name, *args, **kwargs)
+        return result
+
     def _execute_transaction_method(
             self, methodName: str, *args, synchronous=True, **kwargs
     ) -> Tuple[Any, Any]:
@@ -58,7 +68,7 @@ class SmartContract:
         with self._nonce_lock:
             method = getattr(self._contract.functions, methodName)
             transaction = method(*args, **kwargs).build_transaction(
-                {'gas': 1000000, 'gasPrice': self._w3.to_wei('1', 'gwei'),
+                {'gas': 2000000, 'gasPrice': self._w3.to_wei('100', 'gwei'),
                 "from": self._account.address, "nonce": self._nonce})
             signed_transaction = self._account.sign_transaction(transaction)
             try:
@@ -67,7 +77,7 @@ class SmartContract:
             except:
                 self._nonce = self._w3.eth.get_transaction_count(self._account.address)
                 transaction = method(*args, **kwargs).build_transaction(
-                    {'gas': 1000000, 'gasPrice': self._w3.to_wei('1', 'gwei'),
+                    {'gas': 2000000, 'gasPrice': self._w3.to_wei('100', 'gwei'),
                     "from": self._account.address, "nonce": self._nonce})
                 signed_transaction = self._account.sign_transaction(transaction)
                 transaction_hash = self._w3.eth.send_raw_transaction(
@@ -92,35 +102,6 @@ class SmartContract:
         method = getattr(self._contract.functions, methodName)
         return method(*args, **kwargs).call()
 
-    def submitJob(self, url: str) -> int:
-        """
-        Método para submissão de novo job
-        :param url: URL contendo arquivo com os dados do job
-        :return: Inteiro representando o ID do job criado no contrato
-        inteligente
-        """
-        _, receipt = self._execute_transaction_method("submitJob", url)
-        logs = self._contract.events.ReturnUInt().process_receipt(receipt)
-        return logs[0]['args']['_value']
-
-    def getJobs(self) -> List[Job]:
-        """
-        Método para recuperação de todos os jobs armazenados na blockchain
-        :return: Lista de 'Job'
-        """
-        result = self._execute_call_method("getJobs")
-        return [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in
-                zip(result[0], result[1])]
-
-    def getResult(self, job_id: int) -> Result:
-        """
-        Método para recuperação de resultado de job
-        :param job_id: ID do job cujo resultado será consultado
-        :return: Objeto 'Result'
-        """
-        result = self._execute_call_method("getResult", job_id)
-        return {"jobId": job_id, "charCount": result[0], "message": result[1]}
-
     def connectMachine(self) -> Tuple[Any, Any]:
         """
         Método para conexão da máquina com a blockchain
@@ -141,33 +122,42 @@ class SmartContract:
         :return: Hash e receita da transação em tupla
         """
         return self._execute_transaction_method("heartBeat", synchronous=False)
+    
+    async def _getJobsMachine_asyncio(self, batch_size: int = 100):
+        result = self._execute_call_method("getJobsMachineView")
+        jobs_returned = [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in zip(result[0], result[1]) if jobId != 0]
+        jobs_batched = split(jobs_returned, batch_size)
+
+        async_tasks = []
+        if jobs_returned:
+            for jobs_batch in jobs_batched:
+                task = self._execute_transaction_method_asyncio("getJobsMachine", [job['jobId'] for job in jobs_batch])
+                async_tasks.append(task)
+            await asyncio.gather(*async_tasks)
+        return jobs_returned
 
     @newrelic.agent.background_task()
-    def getJobsMachine(self) -> List[Job]:
+    def getJobsMachine(self, batch_size: int = 100) -> List[Job]:
         """
         Método para recuperação dos jobs em espera alocados para a máquina
         :return: Lista de 'Job'
         """
-        result = self._execute_call_method("getJobsMachineView")
-        jobs_returned = [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in zip(result[0], result[1]) if jobId != 0]
-
-        if jobs_returned:
-            self._execute_transaction_method("getJobsMachine", result[0])
-
-        return jobs_returned
+        return asyncio.run(self._getJobsMachine_asyncio(batch_size))
 
     @newrelic.agent.background_task()
-    def submitResults(self, results: List[Result]) -> Tuple[Any, Any]:
+    def submitResults(self, results: List[Result], batch_size: int = 10) -> Tuple[Any, Any]:
         """
         Método para envio de resultados de jobs à blockchain
         :param results: Lista de 'Result'
         :return: Hash e receita da transação
         """
-        jobs_ids = [result["jobId"] for result in results]
-        char_counts = [result["charCount"] for result in results]
-        messages = [result["message"] for result in results]
+        results_batched = split(results, batch_size)
 
-        return self._execute_transaction_method("submitResults", jobs_ids,
+        for results_batch in results_batched:
+            jobs_ids = [result["jobId"] for result in results_batch]
+            char_counts = [result["charCount"] for result in results_batch]
+            messages = [result["message"] for result in results_batch]
+            self._execute_transaction_method("submitResults", jobs_ids,
                                                 char_counts, messages, synchronous=False)
 
 

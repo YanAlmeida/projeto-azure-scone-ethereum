@@ -118,15 +118,6 @@ class SmartContract:
             return logs[0]['args']['_value']
         return
 
-    def getJobs(self) -> List[Job]:
-        """
-        Método para recuperação de todos os jobs armazenados na blockchain
-        :return: Lista de 'Job'
-        """
-        result = self._execute_call_method("getJobs")
-        return [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in
-                zip(result[0], result[1])]
-
     def getResult(self, job_id: int) -> Result:
         """
         Método para recuperação de resultado de job
@@ -136,58 +127,11 @@ class SmartContract:
         result = self._execute_call_method("getResult", job_id)
         return {"jobId": job_id, "charCount": result[0], "message": result[1]}
 
-    def connectMachine(self) -> Tuple[Any, Any]:
-        """
-        Método para conexão da máquina com a blockchain
-        :return: Hash e receita da transação em tupla
-        """
-        return self._execute_transaction_method("connectMachine")
-
-    def disconnectMachine(self) -> Tuple[Any, Any]:
-        """
-        Método para desconexão da máquina com a blockchain
-        :return: Hash e receita da transação em tupla
-        """
-        return self._execute_transaction_method("disconnectMachine")
-
-    def heartBeat(self) -> Tuple[Any, Any]:
-        """
-        Método para envio de heartbeat da máquina para a blockchain
-        :return: Hash e receita da transação em tupla
-        """
-        return self._execute_transaction_method("heartBeat", synchronous=False)
-
-    def getJobsMachine(self) -> List[Job]:
-        """
-        Método para recuperação dos jobs em espera alocados para a máquina
-        :return: Lista de 'Job'
-        """
-        _, receipt = self._execute_transaction_method("getJobsMachine")
-        logs = self._contract.events.ReturnJobs().process_receipt(receipt)
-
-        jobs_ids = logs[0]['args']['_jobsIds']
-        files_urls = logs[0]['args']['_filesUrls']
-
-        return [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in
-                zip(jobs_ids, files_urls)]
-
-    def submitResults(self, results: List[Result]) -> Tuple[Any, Any]:
-        """
-        Método para envio de resultados de jobs à blockchain
-        :param results: Lista de 'Result'
-        :return: Hash e receita da transação
-        """
-        jobs_ids = [result["jobId"] for result in results]
-        char_counts = [result["charCount"] for result in results]
-        messages = [result["message"] for result in results]
-
-        return self._execute_transaction_method("submitResults", jobs_ids,
-                                                char_counts, messages, synchronous=False)
 
 
 MNEMONIC_WORDS = os.environ.get("MNEMONIC", "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat")
 DERIVATION_PATH = os.environ.get("DERIVATION_PATH", "m/44'/60'/0'/0")
-BLOCKCHAIN_ADDRESS = os.environ.get("BLOCKCHAIN_ADDRESS", "http://20.7.178.169:8545")
+BLOCKCHAIN_ADDRESS = os.environ.get("BLOCKCHAIN_ADDRESS", "http://172.200.142.7:8545")
 CONTRACT_ABI = os.environ.get("CONTRACT_ABI", '[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"}],"name":"NotifyMachines","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"_jobId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"_charCount","type":"uint256"},{"indexed":false,"internalType":"string","name":"_message","type":"string"}],"name":"NotifyResult","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"},{"indexed":false,"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"},{"indexed":false,"internalType":"string[]","name":"_filesUrls","type":"string[]"}],"name":"ReturnJobs","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"},{"indexed":false,"internalType":"uint256","name":"_value","type":"uint256"}],"name":"ReturnUInt","type":"event"},{"inputs":[],"name":"connectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"connectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"disconnectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"disconnectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getJobs","outputs":[{"internalType":"uint256[]","name":"jobIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getJobsMachine","outputs":[{"internalType":"uint256[]","name":"jobIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"name":"getResult","outputs":[{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"heartBeat","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobProcessingInfo","outputs":[{"internalType":"uint256","name":"waitingTimestamp","type":"uint256"},{"internalType":"uint256","name":"processingTimestamp","type":"uint256"},{"internalType":"uint256","name":"processedTimestamp","type":"uint256"},{"internalType":"string","name":"currentStatus","type":"string"},{"internalType":"address","name":"responsibleMachine","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobProcessingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobToIndexInProcessing","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobToIndexInProcessingMachine","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobToIndexInWaiting","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobUpdateInterval","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobWaitingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobs","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPROCESSEDPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPROCESSINGPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"string","name":"fileUrl","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsProcessed","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsProcessing","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsWAITINGPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsWaiting","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"resultsPerJobId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"url","type":"string"}],"name":"submitJob","outputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"},{"internalType":"uint256[]","name":"_charCounts","type":"uint256[]"},{"internalType":"string[]","name":"_messages","type":"string[]"}],"name":"submitResults","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
 CONTRACT_ADDRESS = os.environ.get("CONTRACT_ADDRESS", '0x8CdaF0CD259887258Bc13a92C0a6dA92698644C0')
 
