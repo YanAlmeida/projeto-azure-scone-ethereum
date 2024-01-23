@@ -1,78 +1,52 @@
-from locust import User, task, between, events
-from src.smart_contract import CONTRACT, get_contract  # Import your get_contract function
-import time
+from queue import Empty
+from src.event_thread import event_thread
+from locust import User, task, events
+import multiprocessing
+from src.async_task import async_thread
+import multiprocessing
+import threading
+
 
 class SmartContractUser(User):
     wait_time = lambda _: 1  # Define wait time between tasks
-    _user_count = 99
+    _user_count = 0
+    _process = None
+    _thread = None
+
+    _queue_to_process = multiprocessing.Queue()
+    _queue_to_user = multiprocessing.Manager().Queue()
+    user_id = 0
 
     def on_start(self):
+        # Starts async calls process
+        if SmartContractUser._process is None:
+            SmartContractUser._process = multiprocessing.Process(target=async_thread, args=(SmartContractUser._queue_to_process, SmartContractUser._queue_to_user,))
+            SmartContractUser._process.start()
+
+        # Starts firing events thread
+        if SmartContractUser._thread is None:
+            SmartContractUser._thread = threading.Thread(target=event_thread, args=(SmartContractUser._queue_to_user, self.fire_event))
+            SmartContractUser._thread.start()
+
         # Increment the user count for each new user
         SmartContractUser._user_count += 1
         self.user_id = SmartContractUser._user_count
 
+    def on_stop(self):
+        # Stop the background thread when the last user stops
+        if self.user_id == 1 and SmartContractUser._process is not None:
+            SmartContractUser._process.terminate()
+            SmartContractUser._process.join()
+            SmartContractUser._process = None
+
+            SmartContractUser._queue_to_user.put(None)
+            SmartContractUser._thread.join()
+            SmartContractUser._thread = None
+
+    def fire_event(self, **kwargs):
+        events.request.fire(**kwargs)
+
     @task
-    def submit_job_dps(self):
-        contract = get_contract(self._user_count)  # Get the smart contract instance
-
-        # Submit a job
-        contract.submitJob('https://www.teses.usp.br/teses/disponiveis/3/3141/tde-04012018-111326/publico/VladimirEmilianoMoreiraRochaCorr17.pdf',
-                           synchronous=False)
-        events.request.fire(
-                    request_type="smart_contract_interaction",
-                    name="submit_job",
-                    response_time=1,
-                    response_length=1,
-                    exception=None,
-                    context={}
-                )
-
-    # @task
-    # def submit_job_and_get_result(self):
-    #     contract = get_contract(self._user_count)  # Get the smart contract instance
-
-    #     # Submit a job
-    #     job_id = contract.submitJob('https://www.teses.usp.br/teses/disponiveis/3/3141/tde-04012018-111326/publico/VladimirEmilianoMoreiraRochaCorr17.pdf')  # Replace 'some_url' with actual URL
-
-    #     # Start measuring time
-    #     start_time = time.time()
-    #     timeout = 600  # Set a timeout (in seconds)
-
-    #     # Wait for the result with timeout
-    #     while True:
-    #         result = contract.getResult(job_id)
-    #         if result['message']:
-    #             end_time = time.time()
-    #             total_time = end_time - start_time
-    #             if result['message'] != 'SUCESSO':
-    #                 events.request.fire(
-    #                 request_type="smart_contract_interaction",
-    #                 name="submit_job_and_get_result",
-    #                 response_time=total_time*1000,  # Response time in milliseconds
-    #                 exception=Exception(f"Failed job"),
-    #                 response_length=0,  # Size of the response (in bytes)
-    #             )
-    #             else:
-    #                 events.request.fire(
-    #                     request_type="smart_contract_interaction",
-    #                     name="submit_job_and_get_result",
-    #                     response_time=total_time*1000,
-    #                     response_length=result["charCount"],
-    #                     exception=None,
-    #                     context={}
-    #                 )
-    #             print(f"Total time for job {job_id}: {total_time} seconds")
-    #             return 
-
-    #         current_time = time.time() - start_time
-    #         if  current_time > timeout:
-    #             events.request.fire(
-    #                 request_type="smart_contract_interaction",
-    #                 name="submit_job_and_get_result",
-    #                 response_time=current_time*1000,  # Response time in milliseconds
-    #                 exception=Exception(f"Timeout: Job {job_id} result not received within {timeout} seconds"),
-    #                 response_length=0,  # Size of the response (in bytes)
-    #             )
-    #             return
-
-    #         time.sleep(0.5)  # Wait for a short period before checking again
+    def add_request(self):
+        self._queue_to_process.put(self.user_id)
+        return
