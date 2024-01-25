@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY ./app /app
 
-ENV MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
+ENV MNEMONIC="nation quality celery volume loan west master little expand card hire shell"
 ENV DERIVATION_PATH="m/44'/60'/0'/0"
 ENV BLOCKCHAIN_ADDRESS="address://address:8080"
 ENV CONTRACT_ABI="0x000"

@@ -55,7 +55,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
 
     for i in $(seq ${var.account_index} $((${var.account_index} + ${var.number_untrusted_containers} - 1))); do
       sudo docker run -d --network="host" \
-        -e BLOCKCHAIN_ADDRESS="http://${var.public_ip_blockchain}:8545" \
+        -e BLOCKCHAIN_ADDRESS="${var.public_ip_blockchain}" \
         -e CONTRACT_ABI='${var.contract_abi}' \
         -e CONTRACT_ADDRESS="${var.contract_address}" \
         -e ACCOUNT_INDEX="$i" \

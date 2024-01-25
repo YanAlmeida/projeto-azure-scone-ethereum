@@ -100,7 +100,7 @@ class SmartContract:
         :return: Retorno da função em si (lista, string ou inteiro)
         """
         method = getattr(self._contract.functions, methodName)
-        return method(*args, **kwargs).call()
+        return method(*args, **kwargs).call({"from": self._account.address})
 
     def connectMachine(self) -> Tuple[Any, Any]:
         """

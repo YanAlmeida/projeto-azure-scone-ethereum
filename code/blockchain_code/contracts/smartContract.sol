@@ -95,7 +95,6 @@ contract smartContract {
     function submitJob(string calldata url) external returns (uint _jobId) {
         _jobId = lastJobId + 1;
         lastJobId++;
-        require(jobsPerId[_jobId].jobId == 0, "Job already exists");
         jobsPerId[_jobId] = Job(_jobId, url);
         jobs.push(_jobId);
         jobProcessingInfo[_jobId].indexInJobs = jobs.length - 1;
@@ -150,7 +149,6 @@ contract smartContract {
             uint _charCount = _charCounts[i];
             string memory _message = _messages[i];
 
-            require(jobsPerId[_jobId].jobId != 0, "Job not found");
             resultsPerJobId[_jobId] = Result(_jobId, _charCount, _message);
 
             // Remove o Job

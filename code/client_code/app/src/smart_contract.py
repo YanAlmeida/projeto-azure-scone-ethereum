@@ -90,7 +90,7 @@ class SmartContract:
         :return: Retorno da função em si (lista, string ou inteiro)
         """
         method = getattr(self._contract.functions, methodName)
-        return method(*args, **kwargs).call()
+        return method(*args, **kwargs).call({"from": self._account.address})
 
     def get_job_notification_filter(self) -> LogFilter:
         """
@@ -131,7 +131,7 @@ class SmartContract:
 
 
 MNEMONIC_WORDS = os.environ.get("MNEMONIC",
-                                "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat")
+                                "nation quality celery volume loan west master little expand card hire shell")
 DERIVATION_PATH = os.environ.get("DERIVATION_PATH", "m/44'/60'/0'/0")
 BLOCKCHAIN_ADDRESS = os.environ.get("BLOCKCHAIN_ADDRESS",
                                     "http://172.200.142.7:8545")

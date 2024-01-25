@@ -40,7 +40,7 @@ WORKDIR /usr/src/app
 EXPOSE 8545
 
 # Deterministic mnemonic and derivation path
-ENV MNEMONIC="candy maple cake sugar pudding cream honey rich smooth crumble sweet treat"
+ENV MNEMONIC="nation quality celery volume loan west master little expand card hire shell"
 ENV DERIVATION_PATH="m/44'/60'/0'/0/0"
 
 # Initial balance for the accounts in Wei
