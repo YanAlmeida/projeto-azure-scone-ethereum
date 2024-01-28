@@ -123,26 +123,33 @@ class SmartContract:
         """
         return self._execute_transaction_method("heartBeat", synchronous=False)
     
-    async def _getJobsMachine_asyncio(self, batch_size: int = 100):
+    @newrelic.agent.background_task()
+    def getJobsMachineView(self) -> List[Job]:
         result = self._execute_call_method("getJobsMachineView")
         jobs_returned = [{"jobId": jobId, "fileUrl": fileUrl} for jobId, fileUrl in zip(result[0], result[1]) if jobId != 0]
-        jobs_batched = split(jobs_returned, batch_size)
-
-        async_tasks = []
-        if jobs_returned:
-            for jobs_batch in jobs_batched:
-                task = self._execute_transaction_method_asyncio("getJobsMachine", [job['jobId'] for job in jobs_batch])
-                async_tasks.append(task)
-            await asyncio.gather(*async_tasks)
+        
         return jobs_returned
 
+
     @newrelic.agent.background_task()
-    def getJobsMachine(self, batch_size: int = 100) -> List[Job]:
+    async def _getJobsMachine_asyncio(self, jobs_returned: List[Job], batch_size: int = 100):
+        jobs_batched = split(jobs_returned, batch_size)
+        async_tasks = []
+        for jobs_batch in jobs_batched:
+            task = self._execute_transaction_method_asyncio("getJobsMachine", [job['jobId'] for job in jobs_batch])
+            async_tasks.append(task)
+        await asyncio.gather(*async_tasks)
+        return jobs_returned
+
+    def pollJobs(self, batch_size: int = 100) -> List[Job]:
         """
         Método para recuperação dos jobs em espera alocados para a máquina
         :return: Lista de 'Job'
         """
-        return asyncio.run(self._getJobsMachine_asyncio(batch_size))
+        jobs_returned = self.getJobsMachineView()
+        if jobs_returned:
+            return asyncio.run(self._getJobsMachine_asyncio(jobs_returned, batch_size))
+        return jobs_returned
 
     @newrelic.agent.background_task()
     def submitResults(self, results: List[Result], batch_size: int = 10) -> Tuple[Any, Any]:
