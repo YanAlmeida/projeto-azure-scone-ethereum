@@ -1,4 +1,5 @@
 from queue import Empty
+from src.smart_contract import get_contract
 from src.event_thread import event_thread
 from locust import User, task, events
 import multiprocessing
@@ -16,21 +17,27 @@ class SmartContractUser(User):
     _queue_to_process = multiprocessing.Queue()
     _queue_to_user = multiprocessing.Manager().Queue()
     user_id = 0
+    first_id = None
 
     def on_start(self):
+
+        # Increment the user count for each new user
+        SmartContractUser._user_count += 1
+        self.user_id = SmartContractUser._user_count
+
+        # Starts id list
+        if self.first_id is None:
+            self.first_id = get_contract(self.user_id).submitJob('https://drive.usercontent.google.com/uc?id=1C21zZm42v5BOC9oiXHPtODnoYFBDl2-8&export=download')
+
         # Starts async calls process
         if SmartContractUser._process is None:
-            SmartContractUser._process = multiprocessing.Process(target=async_thread, args=(SmartContractUser._queue_to_process, SmartContractUser._queue_to_user,))
+            SmartContractUser._process = multiprocessing.Process(target=async_thread, args=(SmartContractUser._queue_to_process, SmartContractUser._queue_to_user, self.first_id))
             SmartContractUser._process.start()
 
         # Starts firing events thread
         if SmartContractUser._thread is None:
             SmartContractUser._thread = threading.Thread(target=event_thread, args=(SmartContractUser._queue_to_user, self.fire_event))
             SmartContractUser._thread.start()
-
-        # Increment the user count for each new user
-        SmartContractUser._user_count += 1
-        self.user_id = SmartContractUser._user_count
 
     def on_stop(self):
         # Stop the background thread when the last user stops
