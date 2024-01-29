@@ -97,6 +97,8 @@ contract smartContract {
         lastJobId++;
         jobsPerId[_jobId] = Job(_jobId, url);
         jobs.push(_jobId);
+
+        jobProcessingInfo[_jobId].waitingTimestamp = block.timestamp;
         jobProcessingInfo[_jobId].indexInJobs = jobs.length - 1;
         
         uint[] memory jobsToAddress = new uint[](1);
@@ -261,7 +263,6 @@ contract smartContract {
                 jobsPerAddress[connectedMachines[machineIndex]].push(jobId);
 
                 // Armazena dados do processamento do job
-                jobProcessingInfo[jobId].waitingTimestamp = block.timestamp;
                 jobProcessingInfo[jobId].processingTimestamp = 0;
                 jobProcessingInfo[jobId].currentStatus = 1;
                 jobProcessingInfo[jobId].responsibleMachine = connectedMachines[machineIndex];
