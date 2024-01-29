@@ -17,7 +17,7 @@ RUN npm install web3@4.0.3 --prefix /scripts
 RUN npm install @truffle/hdwallet-provider@2.1.13 --prefix /scripts
 
 # Install Ganache CLI
-RUN npm install -g ganache-cli@6.12.2
+RUN npm install -g ganache@7.9.2
 
 # Create directory for the compiled contract
 RUN mkdir -p contractOutput
@@ -41,7 +41,7 @@ EXPOSE 8545
 
 # Deterministic mnemonic and derivation path
 ENV MNEMONIC="nation quality celery volume loan west master little expand card hire shell"
-ENV DERIVATION_PATH="m/44'/60'/0'/0/0"
+ENV DERIVATION_PATH="m/44'/60'/0'/0"
 
 # Initial balance for the accounts in Wei
 ENV INITIAL_BALANCE="1000000000000000"

@@ -27,5 +27,9 @@ web3.eth.getAccounts().then(function(accounts) {
     }).then(function(newContractInstance) {
         console.log('Contract Address: ', newContractInstance.options.address);
         console.log('Contract ABI: ', JSON.stringify(abi))
+    }).catch(function(error) {
+        console.error('Error during contract deployment:', error);
     });
+}).catch(function(error) {
+    console.error('Error getting accounts:', error);
 });
