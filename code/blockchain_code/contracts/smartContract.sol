@@ -222,8 +222,6 @@ contract smartContract {
         }
 
         removeJobMachine(_jobId);
-
-        delete jobProcessingInfo[_jobId];
     }
 
     // Função para 'retornar' jobs processing há muito tempo ao estado waiting
