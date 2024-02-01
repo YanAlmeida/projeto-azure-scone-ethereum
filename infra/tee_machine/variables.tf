@@ -52,7 +52,7 @@ variable "contract_abi" {
 
 variable "contract_address" {
   description = "Endereço do contrato inteligente"
-  default     = "0x8CdaF0CD259887258Bc13a92C0a6dA92698644C0"
+  default     = "0x5b92A0289CBeBacC143842122bC3c5B78e5584FB"
 }
 
 variable "account_index" {
