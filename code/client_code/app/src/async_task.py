@@ -3,10 +3,10 @@ from src.smart_contract import get_contract
 import time
 import asyncio
 
-MAX_JOBS_RUN = 60
-JOBS_PACK_SENT = 0
+MAX_JOBS_RUN = 120
 JOBS_SENT = 0
 DICT_STARTING_TIMES = {}
+LOCK = asyncio.Lock()
 
 
 def async_thread(queue_requests, queue_eventos, initial_value):
@@ -22,16 +22,13 @@ async def poller_loop(queue_requests, queue_eventos, initial_value):
     tasks = []
     try:
         while True:
-            print("VIM DE FORA")
             if JOBS_SENT < MAX_JOBS_RUN:
-                while not queue_requests.empty():
-                    print("VIM DE DENTRO")
+                if not queue_requests.empty():
                     initial_value += 1
                     tasks.append(asyncio.create_task(submit_job_and_get_result(queue_requests.get(), initial_value)))
                     JOBS_SENT += 1
-                JOBS_PACK_SENT += 1
             else:
-                print(f"ENVIO DE {JOBS_PACK_SENT} PACOTES DE JOBS ({JOBS_SENT}) FINALIZADO EM: {time.time() - start_time}s")
+                print(f"ENVIO DE {JOBS_SENT} JOBS FINALIZADO EM: {time.time() - start_time}s")
                 break
             await asyncio.sleep(0.1)
     finally:
@@ -43,11 +40,12 @@ async def submit_job_and_get_result(user_count, job_id):
 
     # Start measuring time
     start_time = time.time()
-    DICT_STARTING_TIMES[job_id] = start_time
 
     # Submit a job
-    job_id = contract.submitJob('https://drive.usercontent.google.com/uc?id=1C21zZm42v5BOC9oiXHPtODnoYFBDl2-8&export=download',
-                                synchronous=False)
+    contract.submitJob('https://drive.usercontent.google.com/uc?id=1C21zZm42v5BOC9oiXHPtODnoYFBDl2-8&export=download',
+                            synchronous=False)
+    
+    DICT_STARTING_TIMES[job_id] = start_time
     return
 
 # async def submit_job_and_get_result(user_count, queue_eventos):

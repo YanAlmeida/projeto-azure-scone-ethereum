@@ -3,36 +3,42 @@ from src.smart_contract import get_contract
 from src.event_thread import event_thread
 from locust import User, task, events
 import multiprocessing
-from src.async_task import async_thread
+from src.async_task import async_thread, MAX_JOBS_RUN
 import multiprocessing
 import threading
+from itertools import cycle
+import copy
 
 
 class SmartContractUser(User):
-    wait_time = lambda _: 1  # Define wait time between tasks
-    _user_count = 0
+    wait_time = lambda _: 0.5  # Define wait time between tasks
+    _initial_counter = 900
+    _user_count = cycle(range(_initial_counter, 999))
     _process = None
     _thread = None
 
-    _queue_to_process = multiprocessing.Queue()
+    _queue_to_process = None
     _queue_to_user = multiprocessing.Manager().Queue()
-    user_id = 0
+    user_id = None
     first_id = None
 
     def on_start(self):
 
         # Increment the user count for each new user
-        SmartContractUser._user_count += 1
-        self.user_id = SmartContractUser._user_count
+        self.user_id = next(SmartContractUser._user_count)
+        self._user_count = copy.deepcopy(SmartContractUser._user_count)
 
         # Starts id list
-        if self.first_id is None:
-            self.first_id = get_contract(self.user_id).submitJob('https://drive.usercontent.google.com/uc?id=1C21zZm42v5BOC9oiXHPtODnoYFBDl2-8&export=download')
-
+        if SmartContractUser.first_id is None:
+            SmartContractUser.first_id = get_contract(self.user_id).submitJob('https://drive.usercontent.google.com/uc?id=1C21zZm42v5BOC9oiXHPtODnoYFBDl2-8&export=download')
+            print(SmartContractUser.first_id)
+        self.first_id = SmartContractUser.first_id + (MAX_JOBS_RUN * (self.user_id - self._initial_counter))
+        print(self.first_id)
         # Starts async calls process
-        if SmartContractUser._process is None:
-            SmartContractUser._process = multiprocessing.Process(target=async_thread, args=(SmartContractUser._queue_to_process, SmartContractUser._queue_to_user, self.first_id))
-            SmartContractUser._process.start()
+        if self._process is None:
+            self._queue_to_process = multiprocessing.Queue()
+            self._process = multiprocessing.Process(target=async_thread, args=(self._queue_to_process, SmartContractUser._queue_to_user, self.first_id))
+            self._process.start()
 
         # Starts firing events thread
         if SmartContractUser._thread is None:
@@ -41,11 +47,12 @@ class SmartContractUser(User):
 
     def on_stop(self):
         # Stop the background thread when the last user stops
-        if self.user_id == 1 and SmartContractUser._process is not None:
-            SmartContractUser._process.terminate()
-            SmartContractUser._process.join()
-            SmartContractUser._process = None
+        if self._process is not None:
+            self._process.terminate()
+            self._process.join()
+            self._process = None
 
+        if self.user_id == self._initial_counter + 1 and SmartContractUser._thread is not None:
             SmartContractUser._queue_to_user.put(None)
             SmartContractUser._thread.join()
             SmartContractUser._thread = None
@@ -55,5 +62,5 @@ class SmartContractUser(User):
 
     @task
     def add_request(self):
-        self._queue_to_process.put(self.user_id)
+        self._queue_to_process.put(next(self._user_count))
         return
