@@ -19,13 +19,14 @@ def disparar_eventos(starting_times, fire_method):
     max_id = max(starting_times.keys())
 
     result = {}
+    time.sleep(120)
     while not result.get("message"):
-        result = get_contract(999).getResult(max_id)
+        result = get_contract(3).getResult(max_id)
         time.sleep(0.1)
 
     for id_job in starting_times.keys():
-        result = get_contract(999).getResult(id_job)
-        processed_time = get_contract(999)._execute_call_method('jobProcessingInfo', id_job)[1]
+        result = get_contract(3).getResult(id_job)
+        processed_time = get_contract(3)._execute_call_method('jobProcessingInfo', id_job)[-1]
         if result['message'] != 'SUCESSO':
             fire_method(
                 **{

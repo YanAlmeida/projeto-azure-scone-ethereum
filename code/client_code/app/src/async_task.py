@@ -3,7 +3,7 @@ from src.smart_contract import get_contract
 import time
 import asyncio
 
-MAX_JOBS_RUN = 120
+MAX_JOBS_RUN = 60
 JOBS_SENT = 0
 DICT_STARTING_TIMES = {}
 LOCK = asyncio.Lock()
@@ -42,10 +42,14 @@ async def submit_job_and_get_result(user_count, job_id):
     start_time = time.time()
 
     # Submit a job
-    contract.submitJob('https://drive.usercontent.google.com/uc?id=1C21zZm42v5BOC9oiXHPtODnoYFBDl2-8&export=download',
+    try:
+        contract.submitJob('https://pgc-yan-bucket.s3.us-east-2.amazonaws.com/output.pdf',
                             synchronous=False)
-    
-    DICT_STARTING_TIMES[job_id] = start_time
+        DICT_STARTING_TIMES[job_id] = start_time
+    except:
+        del DICT_STARTING_TIMES[job_id]
+        print(job_id)
+
     return
 
 # async def submit_job_and_get_result(user_count, queue_eventos):

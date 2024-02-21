@@ -68,7 +68,7 @@ class SmartContract:
         with self._nonce_lock:
             method = getattr(self._contract.functions, methodName)
             transaction = method(*args, **kwargs).build_transaction(
-                {'gas': 10000000, 'gasPrice': self._w3.to_wei('200', 'gwei'),
+                {'gas': 10000000, 'gasPrice': self._w3.to_wei('100', 'gwei'),
                 "from": self._account.address, "nonce": self._nonce})
             signed_transaction = self._account.sign_transaction(transaction)
             transaction_hash = self._w3.eth.send_raw_transaction(

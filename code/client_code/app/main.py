@@ -11,8 +11,8 @@ import copy
 
 
 class SmartContractUser(User):
-    wait_time = lambda _: 0.5  # Define wait time between tasks
-    _initial_counter = 900
+    wait_time = lambda _: 1  # Define wait time between tasks
+    _initial_counter = 800
     _user_count = cycle(range(_initial_counter, 999))
     _process = None
     _thread = None
