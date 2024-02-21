@@ -30,6 +30,7 @@ contract smartContract {
         address responsibleMachine;
         uint indexInJobs;
         uint indexInMachine;
+        uint processedTimestamp;
     }
 
     // Definição da estrutura do resultado
@@ -152,6 +153,7 @@ contract smartContract {
             string memory _message = _messages[i];
 
             resultsPerJobId[_jobId] = Result(_jobId, _charCount, _message);
+            jobProcessingInfo[_jobId].processedTimestamp = block.timestamp;
 
             // Remove o Job
             removeJob(_jobId);
