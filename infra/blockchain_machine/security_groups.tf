@@ -1,34 +1,27 @@
-resource "azurerm_network_security_group" "sg_blockchain" {
-  name                = "${var.prefix}-sg-blockchain"
-  location            = var.location
-  resource_group_name = var.resource_group_name
+resource "aws_security_group" "sg_blockchain" {
+  name        = "${var.prefix}-sg-blockchain"
+  description = "Security group for blockchain"
 
-  security_rule {
-    name                       = "allow_ssh"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = var.ssh_access_ip_address
-    destination_address_prefix = "*"
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.ssh_access_ip_address]
   }
 
-  security_rule {
-    name                       = "allow_http"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "8545"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
+  ingress {
+    from_port   = 8545
+    to_port     = 8545
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Adjust as needed
   }
-}
 
-resource "azurerm_network_interface_security_group_association" "sg_association_blockchain" {
-  network_interface_id      = azurerm_network_interface.ni_blockchain.id
-  network_security_group_id = azurerm_network_security_group.sg_blockchain.id
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]  # Allow all outbound traffic
+  }
+
+  vpc_id = aws_vpc.vpc_blockchain.id
 }

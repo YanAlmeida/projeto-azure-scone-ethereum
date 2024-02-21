@@ -1,3 +1,3 @@
 output "public_ip_blockchain" {
-  value = azurerm_public_ip.public_ip_blockchain.ip_address
+  value = aws_instance.ec2_instance_blockchain.public_ip
 }

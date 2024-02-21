@@ -1,39 +1,28 @@
-resource "azurerm_linux_virtual_machine" "vm_blockchain" {
-  name                = "${var.prefix}-vm-blockchain"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  size                = "Standard_DS1_v2" # Cheapest available size, verify if it fits your needs
-  priority            = "Spot"
-  eviction_policy     = "Deallocate"
+resource "aws_key_pair" "ssh_key" {
+  key_name   = "pgc-key"
+  public_key = var.public_key_ssh
+}
 
-  admin_username = "ubuntu"
 
-  os_disk {
-    name          = "${var.prefix}-osdisk-blockchain"
-    caching       = "ReadWrite"
-    storage_account_type = "Standard_LRS"
+resource "aws_instance" "ec2_instance_blockchain" {
+  ami           = "ami-0c55b159cbfafe1f0"  # Amazon Linux 2
+  instance_type = "t3.micro"  # AWS Free Tier eligible instance type
+  key_name      = aws_key_pair.ssh_key.key_name
+
+  subnet_id = aws_subnet.subnet_blockchain.id
+  vpc_security_group_ids = [aws_security_group.sg_blockchain.id]
+
+  associate_public_ip_address = true
+
+  user_data = <<-USERDATA
+              #!/bin/bash
+              sudo apt-get update
+              sudo apt-get install -y docker.io
+              sudo docker pull ${var.dockerhub_image_blockchain}
+              sudo docker run -d -p 8545:8545 ${var.dockerhub_image_blockchain}
+              USERDATA
+
+  tags = {
+    Name = "${var.prefix}-ec2-blockchain"
   }
-
-  source_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
-    version   = "latest"
-  }
-
-  custom_data = base64encode(<<-CUSTOM_DATA
-    #!/bin/bash
-    sudo apt-get update
-    sudo apt-get install -y docker.io
-    sudo docker pull ${var.dockerhub_image_blockchain}
-    sudo docker run -d -p 8545:8545 ${var.dockerhub_image_blockchain}
-  CUSTOM_DATA
-  )
-
-  admin_ssh_key {
-    username   = "ubuntu"
-    public_key = var.public_key_ssh
-  }
-
-  network_interface_ids = [azurerm_network_interface.ni_blockchain.id]
 }
