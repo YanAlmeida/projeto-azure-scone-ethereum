@@ -3,10 +3,9 @@ from src.smart_contract import get_contract
 import time
 import asyncio
 
-MAX_JOBS_RUN = 60
+MAX_JOBS_RUN = 600
 JOBS_SENT = 0
 DICT_STARTING_TIMES = {}
-LOCK = asyncio.Lock()
 
 
 def async_thread(queue_requests, queue_eventos, initial_value):
@@ -28,23 +27,22 @@ async def poller_loop(queue_requests, queue_eventos, initial_value):
                     tasks.append(asyncio.create_task(submit_job_and_get_result(queue_requests.get(), initial_value)))
                     JOBS_SENT += 1
             else:
-                print(f"ENVIO DE {JOBS_SENT} JOBS FINALIZADO EM: {time.time() - start_time}s")
                 break
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)
     finally:
         await asyncio.gather(*tasks)
+        print(f"ENVIO DE {JOBS_SENT} JOBS FINALIZADO EM: {time.time() - start_time}s")
         queue_eventos.put(DICT_STARTING_TIMES)
 
 async def submit_job_and_get_result(user_count, job_id):
-    contract = get_contract(user_count)  # Get the smart contract instance
+    contract = await asyncio.get_running_loop().run_in_executor(None, get_contract, user_count)  # Get the smart contract instance
 
     # Start measuring time
     start_time = time.time()
 
     # Submit a job
     try:
-        contract.submitJob('https://pgc-yan-bucket.s3.us-east-2.amazonaws.com/output.pdf',
-                            synchronous=False)
+        await asyncio.get_running_loop().run_in_executor(None, contract.submitJob, 'https://pgc-yan-bucket.s3.us-east-2.amazonaws.com/output_500kb.pdf', False)
         DICT_STARTING_TIMES[job_id] = start_time
     except:
         del DICT_STARTING_TIMES[job_id]

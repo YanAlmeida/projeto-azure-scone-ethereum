@@ -53,20 +53,19 @@ class SmartContract:
         :param kwargs: Argumentos nomeados para enviar à função
         :return: Tupla de strings contendo hash da transação e sua receita
         """
-        with self._nonce_lock:
-            method = getattr(self._contract.functions, methodName)
-            transaction = method(*args, **kwargs).build_transaction(
-                {'gas': 10000000, 'gasPrice': self._w3.to_wei('100', 'gwei'),
-                    "from": self._account.address, "nonce": self._nonce})
-            signed_transaction = self._account.sign_transaction(transaction)
-            transaction_hash = self._w3.eth.send_raw_transaction(
-                signed_transaction.rawTransaction)
-            self._nonce += 1
-            if synchronous:
-                transaction_receipt = self._w3.eth.wait_for_transaction_receipt(
-                    transaction_hash)
-                return (transaction_hash, transaction_receipt)
-            return (transaction_hash, None)
+        method = getattr(self._contract.functions, methodName)
+        transaction = method(*args, **kwargs).build_transaction(
+            {'gas': 10000000, 'gasPrice': self._w3.to_wei('100', 'gwei'),
+                "from": self._account.address, "nonce": self._nonce})
+        signed_transaction = self._account.sign_transaction(transaction)
+        transaction_hash = self._w3.eth.send_raw_transaction(
+            signed_transaction.rawTransaction)
+        self._nonce += 1
+        if synchronous:
+            transaction_receipt = self._w3.eth.wait_for_transaction_receipt(
+                transaction_hash)
+            return (transaction_hash, transaction_receipt)
+        return (transaction_hash, None)
 
     def _execute_call_method(
             self, methodName: str, *args, **kwargs
@@ -123,7 +122,7 @@ MNEMONIC_WORDS = os.environ.get("MNEMONIC",
                                 "nation quality celery volume loan west master little expand card hire shell")
 DERIVATION_PATH = os.environ.get("DERIVATION_PATH", "m/44'/60'/0'/0")
 BLOCKCHAIN_ADDRESS = os.environ.get("BLOCKCHAIN_ADDRESS",
-                                    "http://3.145.54.103:8545")
+                                    "http://3.12.152.168:8545")
 CONTRACT_ABI = os.environ.get("CONTRACT_ABI",
                               '[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"},{"indexed":false,"internalType":"uint256","name":"_value","type":"uint256"}],"name":"ReturnUInt","type":"event"},{"inputs":[],"name":"connectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"connectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"disconnectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"disconnectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getJobs","outputs":[{"internalType":"uint256[]","name":"jobIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"}],"name":"getJobsMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getJobsMachineView","outputs":[{"internalType":"uint256[]","name":"jobsIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"name":"getResult","outputs":[{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"heartBeat","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobProcessingInfo","outputs":[{"internalType":"uint256","name":"waitingTimestamp","type":"uint256"},{"internalType":"uint256","name":"processingTimestamp","type":"uint256"},{"internalType":"uint256","name":"currentStatus","type":"uint256"},{"internalType":"address","name":"responsibleMachine","type":"address"},{"internalType":"uint256","name":"indexInJobs","type":"uint256"},{"internalType":"uint256","name":"indexInMachine","type":"uint256"},{"internalType":"uint256","name":"processedTimestamp","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobProcessingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobUpdateInterval","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobWaitingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobs","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"string","name":"fileUrl","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"resultsPerJobId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"url","type":"string"}],"name":"submitJob","outputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"},{"internalType":"uint256[]","name":"_charCounts","type":"uint256[]"},{"internalType":"string[]","name":"_messages","type":"string[]"}],"name":"submitResults","outputs":[],"stateMutability":"nonpayable","type":"function"}]')
 CONTRACT_ADDRESS = os.environ.get("CONTRACT_ADDRESS",
