@@ -151,12 +151,13 @@ contract smartContract {
             uint _jobId = _jobsIds[i];
             uint _charCount = _charCounts[i];
             string memory _message = _messages[i];
+            if(jobProcessingInfo[_jobId].responsibleMachine == msg.sender){
+                resultsPerJobId[_jobId] = Result(_jobId, _charCount, _message);
+                jobProcessingInfo[_jobId].processedTimestamp = block.timestamp;
 
-            resultsPerJobId[_jobId] = Result(_jobId, _charCount, _message);
-            jobProcessingInfo[_jobId].processedTimestamp = block.timestamp;
-
-            // Remove o Job
-            removeJob(_jobId);
+                // Remove o Job
+                removeJob(_jobId);
+            }
         }
 
     }

@@ -3,15 +3,25 @@ from src.smart_contract import get_contract
 from src.event_thread import event_thread
 from locust import User, task, events
 import multiprocessing
-from src.async_task import async_thread, MAX_JOBS_RUN
+from src.async_task import async_thread, MAX_JOBS_RUN, SIZE, TEE
 import multiprocessing
 import threading
 from itertools import cycle
 import copy
+import pytz
 
+
+def gerar_arquivos_txt(tamanho, rps, tee):
+    from datetime import datetime
+
+    sao_paulo_timezone = pytz.timezone('America/Sao_Paulo')
+    now = datetime.now(tz=sao_paulo_timezone).strftime("%d_%m_%Y__%H_%M")
+    open(f"D:\\backup_yan\\Desktop\\TCC\\RELATORIOS\\Dados - {tee} TEE\\{tamanho}\\{now}__{rps}RPS__TEE.txt", 'a').close()
+    open(f"D:\\backup_yan\\Desktop\\TCC\\RELATORIOS\\Dados - {tee} TEE\\{tamanho}\\{now}__{rps}RPS__E2E.txt", 'a').close()
+    return
 
 class SmartContractUser(User):
-    wait_time = lambda _: 0.1  # Define wait time between tasks
+    wait_time = lambda _: 60/MAX_JOBS_RUN  # Define wait time between tasks
     _initial_counter = 3
     _user_count = cycle(range(_initial_counter, 199))
     _process = None
@@ -23,7 +33,7 @@ class SmartContractUser(User):
     first_id = None
 
     def on_start(self):
-
+        gerar_arquivos_txt(SIZE, int(MAX_JOBS_RUN/60), TEE)
         # Increment the user count for each new user
         self.user_id = next(SmartContractUser._user_count)
         self._user_count = copy.deepcopy(SmartContractUser._user_count)
