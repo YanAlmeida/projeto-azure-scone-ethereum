@@ -63,7 +63,7 @@ contract smartContract {
     uint machineIndex = 0;
 
     // Definição de variáveis para auxílio na criação de Jobs (lastJobId) e na validação de máquinas disponíveis (jobUpdateInterval)
-    uint private lastJobId = 0;
+    uint public lastJobId = 0;
     uint public jobUpdateInterval = 20 minutes;
 
     // Variáveis para auxílio em timeouts
@@ -128,6 +128,9 @@ contract smartContract {
         string[] memory fileUrls
     ) {
         uint length = jobsPerAddress[msg.sender].length;
+        if(length > 100){
+            length = 100;
+        }
 
         jobsIds = new uint[](length);
         fileUrls = new string[](length);

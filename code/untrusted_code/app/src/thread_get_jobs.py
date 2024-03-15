@@ -10,9 +10,9 @@ import asyncio
 import aiohttp
 import newrelic.agent
 
-
 TEE_ADDRESS = os.environ.get("TEE_ADDRESS")
 CONNECTION_TUPLE = tuple(TEE_ADDRESS.split(":"))
+SEMAPHORE = asyncio.Semaphore(20)
 
 
 @newrelic.agent.background_task()
@@ -38,23 +38,24 @@ async def fetch_job_text(session: 'Session', job: Job) -> Dict[str, str]:
     :param job: Job cujos dados serão buscados
     :return: Job completo, com status e message preenchidos
     """
-    try:
-        async with session.get(job['fileUrl']) as response:
-            response.raise_for_status() 
-            response.encoding = 'utf-8'
-            content = await response.read()
-            total_response = ""
-            file = io.BytesIO(content)
-            reader = PyPDF2.PdfReader(file)
-            for page_num in range(len(reader.pages)):
-                page = reader.pages[page_num]
-                total_response += page.extract_text()
-            job["message"] = total_response
-            job["status"] = "FETCHED"
-    except Exception as e:
-        job["status"] = "ERROR"
-        job["message"] = None
-    return job
+    async with SEMAPHORE:
+        try:
+            async with session.get(job['fileUrl']) as response:
+                response.raise_for_status() 
+                response.encoding = 'utf-8'
+                content = await response.read()
+                total_response = ""
+                file = io.BytesIO(content)
+                reader = PyPDF2.PdfReader(file)
+                for page_num in range(len(reader.pages)):
+                    page = reader.pages[page_num]
+                    total_response += page.extract_text()
+                job["message"] = total_response
+                job["status"] = "FETCHED"
+        except Exception as e:
+            job["status"] = "ERROR"
+            job["message"] = None
+        return job
 
 
 @newrelic.agent.background_task()

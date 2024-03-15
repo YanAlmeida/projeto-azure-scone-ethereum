@@ -36,6 +36,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
 
     sudo docker pull ${var.dockerhub_image_sgx}
     sudo docker pull ${var.dockerhub_image_sgx_untrusted}
+    sudo docker pull ${var.dockerhub_image_nginx}
 
     git clone https://github.com/YanAlmeida/gsc-v1.5-adjustment.git
     sudo chmod -R 777 /gsc-v1.5-adjustment
@@ -61,6 +62,8 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
         -e ACCOUNT_INDEX="$i" \
         ${var.dockerhub_image_sgx_untrusted}
     done
+
+    sudo docker run -d -p 8080:80 ${var.dockerhub_image_nginx}
 
     sudo docker run -d --name newrelic-infra --network=host --cap-add=SYS_PTRACE --privileged --pid=host -v "/:/host:ro" -v "/var/run/docker.sock:/var/run/docker.sock" -e NRIA_LICENSE_KEY=3daa2a21235d6c7fdb2c71af4262afddFFFFNRAL newrelic/infrastructure:latest
     CUSTOM_DATA

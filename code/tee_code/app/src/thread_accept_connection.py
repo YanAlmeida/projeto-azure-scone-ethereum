@@ -19,12 +19,13 @@ def receive_data(conn: 'Connection') -> str:
             # Connection closed
             break
         data += chunk
-        if data.endswith(delimiter):
+        if data.endswith(delimiter):    
             # End of transmission
             break
     return data.rstrip(delimiter)
 
 
+@newrelic.agent.background_task()
 def generate_count_chars(messages: List[Job]) -> List[Dict[str, Any]]:
     """
     Função que processa os dados recebidos
@@ -46,7 +47,6 @@ def generate_count_chars(messages: List[Job]) -> List[Dict[str, Any]]:
     return [count_chars(message) for message in messages]
 
 
-@newrelic.agent.background_task()
 def process_data_r(conn: 'Connection'):
     with conn:
         data = receive_data(conn)

@@ -9,6 +9,7 @@ module "vm_instance" {
     public_ip_blockchain          = var.public_ip_blockchain
     dockerhub_image_sgx_untrusted = var.dockerhub_image_sgx_untrusted
     dockerhub_image_sgx           = var.dockerhub_image_sgx
+    dockerhub_image_nginx         = var.dockerhub_image_nginx
     location                      = var.location
     prefix                        = var.prefix
     manifest_path                 = var.manifest_path

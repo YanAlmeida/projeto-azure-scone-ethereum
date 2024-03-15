@@ -9,6 +9,7 @@ EXPOSE 9090
 COPY ./app /app
 
 ENV NEW_RELIC_CONFIG_FILE="/app/newrelic.ini"
+ENV NEW_RELIC_INFINITE_TRACING_SPAN_QUEUE_SIZE=100000
 
 RUN pip3 install newrelic
 RUN newrelic-admin validate-config /app/newrelic.ini

@@ -27,6 +27,10 @@ variable "dockerhub_image_sgx_untrusted" {
   description = "Docker image for untrusted SGX instance run."
 }
 
+variable "dockerhub_image_nginx" {
+  description = "Docker image for nginx repository."
+}
+
 variable "sgx_driver_distro_name" {
   description = "Distro name for URL to download SGX driver"
   default     = "ubuntu20.04-server"

@@ -5,19 +5,19 @@ resource "azurerm_network_security_group" "sg_sgx" {
   resource_group_name = var.resource_group_name
 
   security_rule {
-    name                       = "allow_ssh"
+    name                       = "allow_internet_inbound"
     priority                   = 100
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = var.ssh_access_ip_address
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
 
   security_rule {
-    name                       = "allow_internet"
+    name                       = "allow_internet_outbound"
     priority                   = 120
     direction                  = "Outbound"
     access                     = "Allow"
