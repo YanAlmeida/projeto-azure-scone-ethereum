@@ -9,10 +9,22 @@ import io
 import asyncio
 import aiohttp
 import newrelic.agent
+import traceback
+from src.logger import LOGGER
 
 TEE_ADDRESS = os.environ.get("TEE_ADDRESS")
 CONNECTION_TUPLE = tuple(TEE_ADDRESS.split(":"))
-SEMAPHORE = asyncio.Semaphore(20)
+SEMAPHORE = None
+EVENT_LOOP = None
+
+
+def start_event_loop():
+    global SEMAPHORE
+    global EVENT_LOOP
+    EVENT_LOOP = asyncio.new_event_loop()
+    asyncio.set_event_loop(EVENT_LOOP)
+    SEMAPHORE = asyncio.Semaphore(20)
+    EVENT_LOOP.run_forever()
 
 
 @newrelic.agent.background_task()
@@ -38,8 +50,8 @@ async def fetch_job_text(session: 'Session', job: Job) -> Dict[str, str]:
     :param job: Job cujos dados serão buscados
     :return: Job completo, com status e message preenchidos
     """
-    async with SEMAPHORE:
-        try:
+    try:
+        async with SEMAPHORE:
             async with session.get(job['fileUrl']) as response:
                 response.raise_for_status() 
                 response.encoding = 'utf-8'
@@ -52,10 +64,12 @@ async def fetch_job_text(session: 'Session', job: Job) -> Dict[str, str]:
                     total_response += page.extract_text()
                 job["message"] = total_response
                 job["status"] = "FETCHED"
-        except Exception as e:
-            job["status"] = "ERROR"
-            job["message"] = None
-        return job
+    except Exception as e:
+        exc_info = traceback.format_exc()
+        LOGGER.warning(exc_info)
+        job["status"] = "ERROR"
+        job["message"] = None
+    return job
 
 
 @newrelic.agent.background_task()
@@ -84,18 +98,26 @@ def get_and_process_jobs(jobs: List[Job]):
         por ele e retorno à blockchain
         :return:
         """
-        fetched_data = asyncio.run(fetch_jobs(jobs))
-        to_process = []
-        for job in fetched_data:
-            if job["status"] == "ERROR":
-                get_contract().submitResults([
-                    {"jobId": job["jobId"],
-                    "charCount": 0,
-                    "message": "ERROR:FILE_CANT_BE_FETCHED"}
-                ])
-                newrelic.agent.record_exception()
-                continue
-            to_process.append(job)
-        final_data = send_data_to_tee(to_process)
-        get_contract().submitResults(json.loads(final_data))
+        try:
+            get_contract().getJobsMachine(jobs)
+            fetched_data = asyncio.run_coroutine_threadsafe(fetch_jobs(jobs), EVENT_LOOP).result()
+            to_process = []
+            for job in fetched_data:
+                if job["status"] == "ERROR":
+                    get_contract().submitResults([
+                        {"jobId": job["jobId"],
+                        "charCount": 0,
+                        "message": "ERROR:FILE_CANT_BE_FETCHED"}
+                    ])
+                    newrelic.agent.record_exception()
+                    continue
+                to_process.append(job)
+            LOGGER.info('ENVIANDO JOBS AO TEE')
+            final_data = send_data_to_tee(to_process)
+            LOGGER.info(f"PROCESSOU JOBS DAS REQUISIÇÕES: {','.join([str(job['jobId']) for job in jobs])}")
+            get_contract().submitResults(json.loads(final_data))
+        except Exception as e:
+            exc_format = traceback.format_exc()
+            LOGGER.error(exc_format)
+
     return get_and_process_jobs_real

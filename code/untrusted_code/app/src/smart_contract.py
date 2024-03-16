@@ -9,16 +9,12 @@ from hdwallet import HDWallet
 import threading
 import newrelic.agent
 import asyncio
+from src.logger import LOGGER
+import time
 
 
 Job = Dict[str, Union[int, str]]
 Result = Dict[str, Union[int, str]]
-
-
-def split(list_a: list, chunk_size: int):
-  for i in range(0, len(list_a), chunk_size):
-    yield list_a[i:i + chunk_size]
-
 
 def get_account(index, mnemonic, derivation_path):
     wallet = HDWallet()
@@ -27,6 +23,10 @@ def get_account(index, mnemonic, derivation_path):
     return Account.from_key(wallet.private_key())
 
 
+def split(list_a: list, chunk_size: int):
+    for i in range(0, len(list_a), chunk_size):
+        yield list_a[i:i + chunk_size]
+
 class SmartContract:
     _account: Account
     _contract: Contract
@@ -34,6 +34,7 @@ class SmartContract:
     _event_job_submission_filter: LogFilter = None
     _nonce = None
     _nonce_lock = threading.Lock()
+    _jobs_seen = {}
 
     def __init__(self, account: Account, contract: Contract, w3: Web3):
         """
@@ -49,10 +50,6 @@ class SmartContract:
         self._contract = contract
         self._w3 = w3
         self._nonce = self._w3.eth.get_transaction_count(account.address)
-
-    async def _execute_transaction_method_asyncio(self, method_name: str, *args, **kwargs):
-        result = await asyncio.get_running_loop().run_in_executor(None, self._execute_transaction_method, method_name, *args, **kwargs)
-        return result
 
     def _execute_transaction_method(
             self, methodName: str, *args, synchronous=True, **kwargs
@@ -123,24 +120,27 @@ class SmartContract:
 
 
     @newrelic.agent.background_task()
-    async def _getJobsMachine_asyncio(self, jobs_returned: List[Job], batch_size: int = 100):
-        jobs_batched = split(jobs_returned, batch_size)
-        async_tasks = []
-        for jobs_batch in jobs_batched:
-            task = self._execute_transaction_method_asyncio("getJobsMachine", [job['jobId'] for job in jobs_batch])
-            async_tasks.append(task)
-        await asyncio.gather(*async_tasks)
+    def getJobsMachine(self, jobs_returned: List[Job]):
+        self._execute_transaction_method("getJobsMachine", [job['jobId'] for job in jobs_returned])
+        for job in jobs_returned:
+            del self._jobs_seen[job['jobId']]
         return jobs_returned
 
-    def pollJobs(self, batch_size: int = 100) -> List[Job]:
+    def pollJobs(self) -> List[Job]:
         """
         Método para recuperação dos jobs em espera alocados para a máquina
         :return: Lista de 'Job'
         """
         jobs_returned = self.getJobsMachineView()
-        if jobs_returned:
-            return asyncio.run(self._getJobsMachine_asyncio(jobs_returned, batch_size))
-        return jobs_returned
+        jobs = []
+        now = time.time()
+        for job in jobs_returned:
+            if now - self._jobs_seen.get(job['jobId'], 0) >= 600:
+                self._jobs_seen[job['jobId']] = now
+                jobs.append(job)
+                continue
+
+        return jobs
 
     @newrelic.agent.background_task()
     def submitResults(self, results: List[Result], batch_size: int = 10) -> Tuple[Any, Any]:

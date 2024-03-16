@@ -73,23 +73,33 @@ contract smartContract {
     // ------------------ DEFINIÇÃO DE FUNÇÕES EXTERNAS E PÚBLICAS ------------------ //
 
     // Função para leitura dos jobs cadastrados (todos)
-    function getJobs() external view returns (
+    function getJobs(uint firstId, uint lastId) external view returns (
         uint[] memory jobIds,
-        string[] memory fileUrls
+        string[] memory fileUrls,
+        uint[] memory startingTimes,
+        uint[] memory processingTimes,
+        uint[] memory endingTimes
     ){
-        uint length = jobs.length;
+        uint length = lastId - firstId + 1;
 
         // Prepara estruturas para retorno, preenchendo-as com dados dos jobs
         jobIds = new uint[](length);
         fileUrls = new string[](length);
+        startingTimes = new uint[](length);
+        processingTimes = new uint[](length);
+        endingTimes = new uint[](length);
 
-        for (uint i = 0; i < length; i++) {
-            Job memory job = jobsPerId[jobs[i]];
-            jobIds[i] = job.jobId;
-            fileUrls[i] = job.fileUrl;
+        for (uint i = firstId; i <= lastId; i++) {
+            Job memory job = jobsPerId[i];
+            JobProcessingInfo memory jobInfo = jobProcessingInfo[i];
+            jobIds[i-firstId] = job.jobId;
+            fileUrls[i-firstId] = job.fileUrl;
+            startingTimes[i-firstId] = jobInfo.waitingTimestamp;
+            processingTimes[i-firstId] = jobInfo.processingTimestamp;
+            endingTimes[i-firstId] = jobInfo.processedTimestamp;
         }
 
-        return (jobIds, fileUrls);
+        return (jobIds, fileUrls, startingTimes, processingTimes, endingTimes);
     }
 
     // Função para submissão de job
@@ -128,9 +138,7 @@ contract smartContract {
         string[] memory fileUrls
     ) {
         uint length = jobsPerAddress[msg.sender].length;
-        if(length > 100){
-            length = 100;
-        }
+        uint counter = 0;
 
         jobsIds = new uint[](length);
         fileUrls = new string[](length);
@@ -138,8 +146,12 @@ contract smartContract {
         for (uint i=0; i < length; i++){
             Job memory job = jobsPerId[jobsPerAddress[msg.sender][i]];
             if(jobProcessingInfo[job.jobId].currentStatus == 1 && jobProcessingInfo[job.jobId].responsibleMachine == msg.sender){
+                counter = counter + 1;
                 jobsIds[i] = (job.jobId);
                 fileUrls[i] = (job.fileUrl);
+            }
+            if (counter == 100){
+                break;
             }
         }
         return (jobsIds, fileUrls);

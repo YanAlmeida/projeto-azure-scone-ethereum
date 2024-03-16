@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip3 install locust==2.19.1
 
-COPY ./app /app
+COPY . /app
 
 RUN pip3 install -r /app/requirements.txt
 

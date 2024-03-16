@@ -131,6 +131,7 @@ CONTRACT_ADDRESS = os.environ.get("CONTRACT_ADDRESS",
 W3 = Web3(Web3.HTTPProvider(BLOCKCHAIN_ADDRESS))
 
 CONTRACT = {}
+LOCK = threading.Lock()
 
 
 def get_contract(account_number) -> SmartContract:
@@ -138,22 +139,17 @@ def get_contract(account_number) -> SmartContract:
     Função para retorno de objeto para interação com o contrato inteligente.
     :return: Instância de 'SmartContract' (única na aplicação)
     """
-    global CONTRACT
-    if CONTRACT.get(account_number) is None:
-        account = get_account(account_number, MNEMONIC_WORDS, DERIVATION_PATH)
-        contract = W3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
+    with LOCK:
+        global CONTRACT
+        if CONTRACT.get(account_number) is None:
+            account = get_account(account_number, MNEMONIC_WORDS, DERIVATION_PATH)
+            contract = W3.eth.contract(address=CONTRACT_ADDRESS, abi=CONTRACT_ABI)
 
-        CONTRACT[account_number] = SmartContract(account, contract, W3)
-    return CONTRACT[account_number]
+            CONTRACT[account_number] = SmartContract(account, contract, W3)
+        return CONTRACT[account_number]
 
 
-def check_contract_available() -> bool:
-    """
-    Função para retorno de booleano indicando se o smart contract pode ser recuperado com sucesso
-    """
-    try:
-        get_contract()
-        return True
-    except Exception as e:
-        print(e)
-        return False
+def erase_cache():
+    with LOCK:
+        global CONTRACT
+        CONTRACT = {}
