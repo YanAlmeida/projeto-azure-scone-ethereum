@@ -5,7 +5,7 @@ import os
 
 
 if __name__ == "__main__":
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=6) as executor:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             server.bind(("0.0.0.0", 9090))
             server.listen()

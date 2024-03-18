@@ -1,67 +1,60 @@
-import json
-from typing import List, Dict, Any
-from src.user_types import Job
+import io
+from src.logger import LOGGER
+import traceback
+import PyPDF2
 import newrelic.agent
-
-
-def receive_data(conn: 'Connection') -> str:
-    """
-    Função que recebe os dados a partir de uma conexão TCP
-    :param conn: Objeto representando a conexão
-    :return: Dados recebidos na forma de string
-    """
-    buffer_size = 64*1024  # 64 KB
-    delimiter = '#END_OF_TRANSMISSION#'
-    data = ''
-    while True:
-        chunk = conn.recv(buffer_size).decode('utf-8')
-        if not chunk:
-            # Connection closed
-            break
-        data += chunk
-        if data.endswith(delimiter):    
-            # End of transmission
-            break
-    return data.rstrip(delimiter)
+import json
 
 
 @newrelic.agent.background_task()
-def generate_count_chars(messages: List[Job]) -> List[Dict[str, Any]]:
-    """
-    Função que processa os dados recebidos
-    :param messages: Jobs a serem processados
-    :return: Função representando a thread
-    """
+def process_pdf_data(job_id, pdf_data):
+    try:
+        LOGGER.info(f"Processando job {job_id}")
+        total_response = 0
+        file = io.BytesIO(pdf_data)
+        reader = PyPDF2.PdfReader(file)
+        for page in reader.pages:
+            total_response += len(page.extract_text())
+        return {"jobId": job_id, "charCount": total_response, "message": "SUCESSO"}
+    except Exception:
+        formatted_exc = traceback.format_exc()
+        LOGGER.error(formatted_exc)
+        return {"jobId": job_id, "charCount": 0, "message": "ERRO"}
 
-    def count_chars(message):
+
+def parse_header(header):
+    parts = header.split('#')
+    if len(parts) >= 2 and parts[0] == "BEGIN":
+        return int(parts[1])
+    return None
+
+
+def accept_connection(connection):
+    def handle_connection():
         try:
-            return {"jobId": message["jobId"],
-                             "charCount": len(
-                                 message["message"]),
-                             "message": "SUCESSO"}
-        except:
-            return {"jobId": message["jobId"],
-                             "charCount": 0,
-                             "message": "FALHA"}
+            buffer = b""
+            job_id = None
+            processing_started = False
 
-    return [count_chars(message) for message in messages]
+            while True:
+                chunk = connection.recv(4096)
+                buffer += chunk
 
+                if not processing_started and b'##' in buffer:
+                    header_part, _, buffer = buffer.partition(b'##')
+                    job_id = parse_header(header_part.decode("utf-8"))
+                    processing_started = True
 
-def process_data_r(conn: 'Connection'):
-    with conn:
-        data = receive_data(conn)
-        json_data = json.loads(data)
-        result = json.dumps(generate_count_chars(json_data)).encode("utf-8")
-        conn.sendall(result)
+                if b"#END_OF_TRANSMISSION#" in buffer:
+                    buffer, _ = buffer.split(b"#END_OF_TRANSMISSION#", 1)
+                    break
 
+            processed_result = process_pdf_data(job_id, buffer)
+            connection.sendall(json.dumps(processed_result).encode("utf-8"))
+        except Exception:
+            formatted_exc = traceback.format_exc()
+            LOGGER.error(formatted_exc)
+        finally:
+            connection.close()
 
-def accept_connection(conn: 'Connection'):
-    """
-    Função para recebimento de dados e retorno de função para thread de processamento/resposta
-    :return:
-    """
-    
-    def process_data():
-        process_data_r(conn)
-
-    return process_data
+    return handle_connection
