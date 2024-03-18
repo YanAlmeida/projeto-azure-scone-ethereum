@@ -1,11 +1,7 @@
 from src.smart_contract import get_contract, Job
-from typing import Dict, List
-import requests
+from typing import List
 import os
-import socket
 import json
-import PyPDF2
-import io
 import asyncio
 import aiohttp
 import newrelic.agent
@@ -27,60 +23,62 @@ def start_event_loop():
     EVENT_LOOP.run_forever()
 
 
+async def send_data_to_tee_async(job_id, data_chunks):
+    # Cabeçalho e rodapé
+    header = f"BEGIN#{job_id}##"
+    footer = "#END_OF_TRANSMISSION#"
+
+    reader, writer = await asyncio.open_connection(CONNECTION_TUPLE[0], int(CONNECTION_TUPLE[1]))
+
+    # Envia o cabeçalho
+    writer.write(header.encode("utf-8"))
+    await writer.drain()
+
+    # Envia os dados em pedaços
+    for chunk in data_chunks:
+        writer.write(chunk)
+        await writer.drain()
+
+    # Envia o rodapé
+    writer.write(footer.encode("utf-8"))
+    await writer.drain()
+
+    data = await reader.read(1024)  # 1 KB
+
+    writer.close()
+    await writer.wait_closed()
+
+    return data.decode("utf-8")
+
+
 @newrelic.agent.background_task()
-def send_data_to_tee(message):
-    """
-    Função para envio dos dados ao TEE e dos resultados à blockchain
-    :return:
-    """
-
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.connect((CONNECTION_TUPLE[0], int(CONNECTION_TUPLE[1])))
-        final_string = json.dumps(message) + "#END_OF_TRANSMISSION#"
-        sock.sendall(final_string.encode("utf-8"))
-        received = sock.recv(64*1024).decode("utf-8") #64 KB
-
-    return received
-
-
-async def fetch_job_text(session: 'Session', job: Job) -> Dict[str, str]:
-    """
-    Função para fetch de texto referenciado pela URL do job
-    :param session: Sessão do aiohttp
-    :param job: Job cujos dados serão buscados
-    :return: Job completo, com status e message preenchidos
-    """
+async def fetch_and_send_job(session: 'Session', job: Job):
     try:
         async with SEMAPHORE:
             async with session.get(job['fileUrl']) as response:
-                response.raise_for_status() 
-                response.encoding = 'utf-8'
-                content = await response.read()
-                total_response = ""
-                file = io.BytesIO(content)
-                reader = PyPDF2.PdfReader(file)
-                for page_num in range(len(reader.pages)):
-                    page = reader.pages[page_num]
-                    total_response += page.extract_text()
-                job["message"] = total_response
-                job["status"] = "FETCHED"
+                response.raise_for_status()
+                
+                chunks = []
+                async for chunk in response.content.iter_chunked(4096):
+                    chunks.append(chunk)
+                
+                # Alteração aqui para incluir o ID do job
+                total_response = await send_data_to_tee_async(job['jobId'], chunks)
+                job = json.loads(total_response)
+                    
     except Exception as e:
-        exc_info = traceback.format_exc()
-        LOGGER.warning(exc_info)
-        job["status"] = "ERROR"
-        job["message"] = None
+        exc_formatted = traceback.format_exc()
+        LOGGER.warning(f"Erro ao processar o job {job['jobId']}: {exc_formatted}")
+        job = {
+            "jobId": job["jobId"],
+            "message": "ERROR",
+            "charCount": 0
+        }
     return job
 
-
-@newrelic.agent.background_task()
-async def fetch_jobs(jobs: List[Job]):
-    """
-    Função para fetch de lista de jobs
-    :param jobs: lista de jobs
-    :return: lista de jobs completos
-    """
+async def process_jobs(jobs: List[Job]):
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_job_text(session, job) for job in jobs]
+        tasks = [fetch_and_send_job(session, job) for job in jobs]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return results
 
@@ -100,22 +98,9 @@ def get_and_process_jobs(jobs: List[Job]):
         """
         try:
             get_contract().getJobsMachine(jobs)
-            fetched_data = asyncio.run_coroutine_threadsafe(fetch_jobs(jobs), EVENT_LOOP).result()
-            to_process = []
-            for job in fetched_data:
-                if job["status"] == "ERROR":
-                    get_contract().submitResults([
-                        {"jobId": job["jobId"],
-                        "charCount": 0,
-                        "message": "ERROR:FILE_CANT_BE_FETCHED"}
-                    ])
-                    newrelic.agent.record_exception()
-                    continue
-                to_process.append(job)
-            LOGGER.info('ENVIANDO JOBS AO TEE')
-            final_data = send_data_to_tee(to_process)
+            results = asyncio.run_coroutine_threadsafe(process_jobs(jobs), EVENT_LOOP).result()
             LOGGER.info(f"PROCESSOU JOBS DAS REQUISIÇÕES: {','.join([str(job['jobId']) for job in jobs])}")
-            get_contract().submitResults(json.loads(final_data))
+            get_contract().submitResults(results)
         except Exception as e:
             exc_format = traceback.format_exc()
             LOGGER.error(exc_format)
