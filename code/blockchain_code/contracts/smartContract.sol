@@ -48,6 +48,7 @@ contract smartContract {
 
     mapping(uint => Job) public jobsPerId;
     uint[] public jobs;
+    uint[] public processedJobs;
 
     // Definição de mappings e array para acesso aos resultados
     mapping(uint => Result) public resultsPerJobId;
@@ -69,18 +70,27 @@ contract smartContract {
     // Variáveis para auxílio em timeouts
     uint public jobWaitingMaxTime = 10 minutes;
     uint public jobProcessingMaxTime = 10 minutes;
+    bool public collectResults = false;
 
     // ------------------ DEFINIÇÃO DE FUNÇÕES EXTERNAS E PÚBLICAS ------------------ //
 
+    function resetProcessedJobs() external {
+        delete processedJobs;
+    }
+
+    function returnJobsIds() external view returns (uint[] memory jobIds) {
+        return processedJobs;
+    }
+
     // Função para leitura dos jobs cadastrados (todos)
-    function getJobs(uint firstId, uint lastId) external view returns (
+    function getJobs(uint[] calldata idList) external view returns (
         uint[] memory jobIds,
         string[] memory fileUrls,
         uint[] memory startingTimes,
         uint[] memory processingTimes,
         uint[] memory endingTimes
     ){
-        uint length = lastId - firstId + 1;
+        uint length = idList.length;
 
         // Prepara estruturas para retorno, preenchendo-as com dados dos jobs
         jobIds = new uint[](length);
@@ -89,14 +99,14 @@ contract smartContract {
         processingTimes = new uint[](length);
         endingTimes = new uint[](length);
 
-        for (uint i = firstId; i <= lastId; i++) {
-            Job memory job = jobsPerId[i];
-            JobProcessingInfo memory jobInfo = jobProcessingInfo[i];
-            jobIds[i-firstId] = job.jobId;
-            fileUrls[i-firstId] = job.fileUrl;
-            startingTimes[i-firstId] = jobInfo.waitingTimestamp;
-            processingTimes[i-firstId] = jobInfo.processingTimestamp;
-            endingTimes[i-firstId] = jobInfo.processedTimestamp;
+        for (uint i = 0; i < length; i++) {
+            Job memory job = jobsPerId[idList[i]];
+            JobProcessingInfo memory jobInfo = jobProcessingInfo[idList[i]];
+            jobIds[i] = job.jobId;
+            fileUrls[i] = job.fileUrl;
+            startingTimes[i] = jobInfo.waitingTimestamp;
+            processingTimes[i] = jobInfo.processingTimestamp;
+            endingTimes[i] = jobInfo.processedTimestamp;
         }
 
         return (jobIds, fileUrls, startingTimes, processingTimes, endingTimes);
@@ -119,6 +129,28 @@ contract smartContract {
         
         emit ReturnUInt(msg.sender, _jobId);
         return _jobId;
+    }
+
+    // Função para submissão de job
+    function submitJobBatch(string[] calldata urls) external {
+        uint length = urls.length;
+        uint[] memory jobsToAddress = new uint[](length);
+
+        for(uint i=0; i<length; i++){
+            string memory url = urls[i];
+            uint _jobId = lastJobId + 1;
+            lastJobId++;
+            jobsPerId[_jobId] = Job(_jobId, url);
+            jobs.push(_jobId);
+
+            jobProcessingInfo[_jobId].waitingTimestamp = block.timestamp;
+            jobProcessingInfo[_jobId].indexInJobs = jobs.length - 1;
+            
+            jobsToAddress[i] = _jobId;
+        }
+
+        addressJobs(jobsToAddress);
+        
     }
 
     // Função para recuperação de jobs para processamento
@@ -157,6 +189,10 @@ contract smartContract {
         return (jobsIds, fileUrls);
     }
 
+    function setResultValue(bool value) external{
+        collectResults = value;
+    }
+
     // Função para submissão de resultados de jobs
     function submitResults(uint[] calldata _jobsIds, uint[] calldata _charCounts, string[] calldata _messages) external {
         uint length = _jobsIds.length;
@@ -169,6 +205,10 @@ contract smartContract {
             if(jobProcessingInfo[_jobId].responsibleMachine == msg.sender){
                 resultsPerJobId[_jobId] = Result(_jobId, _charCount, _message);
                 jobProcessingInfo[_jobId].processedTimestamp = block.timestamp;
+                if(collectResults){
+                    processedJobs.push(_jobId);
+                }
+
 
                 // Remove o Job
                 removeJob(_jobId);

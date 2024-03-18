@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Start Ganache in the background
-ganache --server.host 0.0.0.0 --wallet.mnemonic "${MNEMONIC}" --wallet.hdPath "${DERIVATION_PATH}" --wallet.defaultBalance "${INITIAL_BALANCE}" -a 1000 --miner.blockTime 15 --miner.blockGasLimit 0x1C9C380 --miner.defaultGasPrice 0x174876e800 &
+ganache --server.host 0.0.0.0 --wallet.mnemonic "${MNEMONIC}" --wallet.hdPath "${DERIVATION_PATH}" --wallet.defaultBalance "${INITIAL_BALANCE}" -a 1000 --chain.asyncRequestProcessing false --miner.defaultGasPrice 0x1 --miner.blockGasLimit 0x3b9aca00 --miner.defaultTransactionGasLimit 0x3b9aca00 &
 
 # Wait for Ganache to initialize
 echo "Waiting for Ganache to initialize..."
