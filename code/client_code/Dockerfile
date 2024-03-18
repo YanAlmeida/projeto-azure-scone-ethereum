@@ -12,6 +12,8 @@ COPY . /app
 
 RUN pip3 install -r /app/requirements.txt
 
+ENV BLOCKCHAIN_ADDRESS="13.59.79.73"
+
 EXPOSE 8089
 
 ENTRYPOINT ["locust", "-f", "/app/main.py"]
