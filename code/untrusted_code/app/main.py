@@ -27,7 +27,7 @@ if __name__ == '__main__':
             get_contract().disconnectMachine()
             get_contract().connectMachine()
 
-        with ThreadPoolExecutor(max_workers=6) as executor:
+        with ThreadPoolExecutor(max_workers=8) as executor:
             
             executor.submit(start_event_loop)
             # Inicia a thread heart_beat
