@@ -123,7 +123,8 @@ class SmartContract:
     def getJobsMachine(self, jobs_returned: List[Job]):
         self._execute_transaction_method("getJobsMachine", [job['jobId'] for job in jobs_returned])
         for job in jobs_returned:
-            del self._jobs_seen[job['jobId']]
+            if self._jobs_seen.get(job['jobId']):
+                del self._jobs_seen[job['jobId']]
         return jobs_returned
 
     def pollJobs(self) -> List[Job]:

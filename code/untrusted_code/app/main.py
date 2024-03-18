@@ -43,3 +43,4 @@ if __name__ == '__main__':
     except Exception as e:
         exc_format = traceback.format_exc()
         LOGGER.error(exc_format)
+        raise e
