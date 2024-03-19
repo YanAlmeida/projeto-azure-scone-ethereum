@@ -52,10 +52,10 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
 
     sudo rm enclave-key.pem
 
-    sudo docker run -d --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-${var.dockerhub_image_sgx}
+    sudo docker run --name tee -d --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-${var.dockerhub_image_sgx}
 
     for i in $(seq ${var.account_index} $((${var.account_index} + ${var.number_untrusted_containers} - 1))); do
-      sudo docker run -d --network="host" \
+      sudo docker run --name untrusted -d --network="host" \
         -e BLOCKCHAIN_ADDRESS="${var.public_ip_blockchain}" \
         -e CONTRACT_ABI='${var.contract_abi}' \
         -e CONTRACT_ADDRESS="${var.contract_address}" \
@@ -63,7 +63,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
         ${var.dockerhub_image_sgx_untrusted}
     done
 
-    sudo docker run -d -p 8080:80 ${var.dockerhub_image_nginx}
+    sudo docker run --name nginx -d -p 8080:80 ${var.dockerhub_image_nginx}
 
     sudo docker run -d --name newrelic-infra --network=host --cap-add=SYS_PTRACE --privileged --pid=host -v "/:/host:ro" -v "/var/run/docker.sock:/var/run/docker.sock" -e NRIA_LICENSE_KEY=3daa2a21235d6c7fdb2c71af4262afddFFFFNRAL newrelic/infrastructure:latest
     CUSTOM_DATA
