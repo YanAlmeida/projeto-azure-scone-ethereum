@@ -12,7 +12,7 @@ COPY . /app
 
 RUN pip3 install -r /app/requirements.txt
 
-ENV BLOCKCHAIN_ADDRESS="13.59.79.73"
+ENV BLOCKCHAIN_ADDRESS="18.223.172.239"
 
 EXPOSE 8089
 

@@ -5,8 +5,8 @@ from smart_contract import get_contract, erase_cache
 from datetime import datetime
 import os
 
-BATCH_SIZE = 10
-WAIT_TIME = 5
+BATCH_SIZE = 25
+WAIT_TIME = 10
 
 
 class TEEUser(User):
@@ -45,4 +45,7 @@ class TEEUser(User):
                     }
             )
         fim = time.time()
-        time.sleep(WAIT_TIME - (fim - inicio))
+        tempo = WAIT_TIME - (fim - inicio)
+        if (tempo) < 0:
+            tempo = 0
+        time.sleep(tempo)
