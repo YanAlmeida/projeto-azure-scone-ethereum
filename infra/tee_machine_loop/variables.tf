@@ -74,7 +74,7 @@ variable "manifest_path" {
 
 variable "generate_public_ip" {
   description = "Se deve ou não gerar ip publico para as máquinas"
-  type        = bool
+  type        = list(bool)
 }
 
 variable "number_untrusted_containers" {

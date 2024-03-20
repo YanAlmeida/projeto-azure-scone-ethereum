@@ -2,7 +2,7 @@ resource "azurerm_linux_virtual_machine" "vm_sgx" {
   name                = "${var.prefix}-vm-sgx-${var.account_index}"
   location            = var.location
   resource_group_name = var.resource_group_name
-  size                = "Standard_DC1ds_v3" # This is an SGX-enabled size; please verify if it fits your needs
+  size                = "Standard_DC1ds_v3"
   priority            = "Spot"
   eviction_policy     = "Deallocate"
 
