@@ -1,19 +1,37 @@
-FROM ubuntu:20.04
+# Usar uma imagem base oficial do Python
+FROM python:3.8-slim
 
-ENV DEBIAN_FRONTEND="noninteractive"
+# Instalar sshpass
+RUN apt-get update && \
+    apt-get install -y openssh-client bc && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y \
-    python3.8 \
-    python3-pip
+# Configurar o diretório de trabalho
+WORKDIR /app
 
-RUN pip3 install locust==2.19.1
+# Copiar as chaves SSH para o diretório .ssh do usuário root no contêiner
+# Substitua `id_rsa` e `id_rsa.pub` pelos caminhos para suas chaves SSH
+COPY id_rsa /root/.ssh/id_rsa
+COPY id_rsa.pub /root/.ssh/id_rsa.pub
 
-COPY . /app
+# Garantir permissões adequadas para as chaves
+RUN chmod 600 /root/.ssh/id_rsa && \
+    chmod 644 /root/.ssh/id_rsa.pub
 
-RUN pip3 install -r /app/requirements.txt
+# Copiar o script shell para o diretório de trabalho
+COPY requirements.txt /app/requirements.txt
 
-ENV BLOCKCHAIN_ADDRESS="18.223.172.239"
+RUN pip3 install -r requirements.txt
 
-EXPOSE 8089
+RUN pip3 install locust
 
-ENTRYPOINT ["locust", "-f", "/app/main.py"]
+COPY automacao.sh /app/automacao.sh
+COPY coletar_dados.py /app/coletar_dados.py
+COPY main.py /app/main.py
+COPY smart_contract.py /app/smart_contract.py
+
+# Dar permissão de execução ao script
+RUN chmod +x /app/automacao.sh
+
+# Comando para executar o script quando o contêiner iniciar
+CMD ["/app/automacao.sh"]

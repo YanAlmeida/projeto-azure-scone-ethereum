@@ -5,7 +5,7 @@ from smart_contract import get_contract, erase_cache
 from datetime import datetime
 import os
 
-BATCH_SIZE = 25
+BATCH_SIZE = int(os.environ.get("BATCH_SIZE"))
 WAIT_TIME = 10
 
 
