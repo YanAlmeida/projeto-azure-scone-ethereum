@@ -68,8 +68,7 @@ contract smartContract {
     uint public jobUpdateInterval = 20 minutes;
 
     // Variáveis para auxílio em timeouts
-    uint public jobWaitingMaxTime = 10 minutes;
-    uint public jobProcessingMaxTime = 10 minutes;
+    uint public jobProcessingMaxTime = 30 minutes;
     bool public collectResults = false;
 
     // ------------------ DEFINIÇÃO DE FUNÇÕES EXTERNAS E PÚBLICAS ------------------ //

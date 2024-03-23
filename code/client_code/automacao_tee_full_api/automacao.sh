@@ -10,9 +10,9 @@ export BLOCKCHAIN_ADDRESS="http://${GANACHE_NODE}:8545"
 
 CONTAINERS_HASHES_TEE=("untrusted" "tee" "nginx")
 
-BATCH_SIZES=(20 20 25)
-CLIENT_NUMBERS=(3 4 4)
-FILE_SIZES=("1kb" "10kb" "100kb")
+BATCH_SIZES=(5 10 15 20 20 20 20 25)
+CLIENT_NUMBERS=(1 1 1 1 2 3 4 4)
+FILE_SIZES=("1kb" "10kb" "100kb", "1mb", "5mb", "10mb")
 
 eval $(ssh-agent -s)
 ssh-add /root/.ssh/id_rsa
@@ -81,7 +81,10 @@ for i in "${!BATCH_SIZES[@]}"; do
         echo "Reiniciando TEE"
         restart_tee_containers
 
-        sleep 5
+        while ! nc -z ${TEE_NODE[0]} 9090; do
+            echo "Service at ${TEE_NODE[0]}:9090 is not available yet. Waiting for 5 seconds..."
+            sleep 5
+        done
 
         echo "Criando diretorio para dados do teste"
         

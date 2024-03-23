@@ -29,7 +29,7 @@ def parse_header(header):
     return None
 
 
-def accept_connection(connection):
+def read_file_connection(connection, executor):
     def handle_connection():
         try:
             buffer = b""
@@ -48,7 +48,17 @@ def accept_connection(connection):
                 if b"#END_OF_TRANSMISSION#" in buffer:
                     buffer, _ = buffer.split(b"#END_OF_TRANSMISSION#", 1)
                     break
+            executor.submit(accept_connection(job_id, buffer, connection))
+        except Exception:
+            formatted_exc = traceback.format_exc()
+            LOGGER.error(formatted_exc)
+            connection.close()
+    return handle_connection
 
+
+def accept_connection(job_id, buffer, connection):
+    def handle_connection():
+        try: 
             processed_result = process_pdf_data(job_id, buffer)
             connection.sendall(json.dumps(processed_result).encode("utf-8"))
         except Exception:

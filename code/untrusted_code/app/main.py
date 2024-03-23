@@ -11,7 +11,7 @@ import traceback
 from src.logger import LOGGER
 import asyncio
 
-POLL_INTERVAL = 50  # seconds
+POLL_INTERVAL = int(os.environ.get('POLL_INTERVAL', 50))  # seconds
 
 
 if __name__ == '__main__':

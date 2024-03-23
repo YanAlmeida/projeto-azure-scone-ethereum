@@ -1,5 +1,5 @@
 import socket
-from src.thread_accept_connection import accept_connection
+from src.thread_accept_connection import accept_connection, read_file_connection
 from concurrent.futures import ThreadPoolExecutor
 import os
 
@@ -11,4 +11,4 @@ if __name__ == "__main__":
             server.listen()
             while True:
                 connection, client_address = server.accept()
-                executor.submit(accept_connection(connection))
+                executor.submit(read_file_connection(connection, executor))
