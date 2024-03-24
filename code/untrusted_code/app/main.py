@@ -24,7 +24,7 @@ if __name__ == '__main__':
         try:
             get_contract().connectMachine()
         except:
-            get_contract().disconnectMachine()
+            # get_contract().disconnectMachine()
             get_contract().connectMachine()
 
         with ThreadPoolExecutor(max_workers=8) as executor:

@@ -34,8 +34,9 @@ class TEEUser(User):
         host, rps = self.host.split('/')
         host_size = host.split('_')[1].split('.')[0]
         self._file = None
-        TEEUser._file = None
-        open(f'/tmp/DADOS_TESTES.txt', 'a').write(f'END {host_size}-{rps}: {timestamp_to_string(time.time())}\n#\n')
+        if TEEUser._file is not None:
+            TEEUser._file = None
+            open(f'/tmp/DADOS_TESTES.txt', 'a').write(f'END {host_size}-{rps}: {timestamp_to_string(time.time())}\n#\n')
 
     @task
     def send_request_to_tee(self):

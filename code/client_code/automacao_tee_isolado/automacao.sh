@@ -31,7 +31,7 @@ run_test() {
     export WAIT_TIME=$1
     export TEE_ADDRESS=$4
 
-    RPS=$(echo "scale=1; $1 * $2" | bc)
+    RPS=$(echo "scale=1; $2 / $1" | bc)
 
     # Se o resultado terminar com '.0', então queremos remover a parte decimal
     if [[ $RPS == *.0 ]]; then
@@ -63,7 +63,7 @@ for i in "${!WAIT_TIMES[@]}"; do
 
         echo "Criando diretorio para dados do teste"
         
-        RPS=$(echo "scale=1; ${WAIT_TIMES[i]} * ${CLIENT_NUMBERS[i]}" | bc)
+        RPS=$(echo "scale=1; ${WAIT_TIMES[i]} / ${CLIENT_NUMBERS[i]}" | bc)
         # Se o resultado terminar com '.0', então queremos remover a parte decimal
         if [[ $RPS == *.0 ]]; then
             RPS="${RPS%.*}"

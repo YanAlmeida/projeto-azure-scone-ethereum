@@ -97,7 +97,7 @@ def get_and_process_jobs(jobs: List[Job]):
         :return:
         """
         try:
-            get_contract().getJobsMachine(jobs)
+            # get_contract().getJobsMachine(jobs)
             results = asyncio.run_coroutine_threadsafe(process_jobs(jobs), EVENT_LOOP).result()
             LOGGER.info(f"PROCESSOU JOBS DAS REQUISIÇÕES: {','.join([str(job['jobId']) for job in jobs])}")
             get_contract().submitResults(results)

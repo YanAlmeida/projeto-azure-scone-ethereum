@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 from typing import List, Dict, Optional
-import uuid
 from datetime import datetime
+import time
 
 app = FastAPI()
 
@@ -11,40 +11,66 @@ completed_jobs = {}  # Armazena os resultados dos jobs completos
 connected_machines = []  # Armazena os IDs das máquinas conectadas
 jobs_by_machine = {}  # Mapeia machine_id para uma lista de job_ids
 machine_index = 0  # Controla a atribuição de jobs usando round-robin
+jobs_ids = 0
 
 # Variáveis para o registro de processamento
 is_processing_enabled = False
 processed_jobs_list = []
 
+class Machine(BaseModel):
+    machine_id: str
+
 class Job(BaseModel):
-    url: HttpUrl
+    fileUrl: str
 
 class JobBatch(BaseModel):
-    jobs: List[HttpUrl]
+    jobs: List[str]
 
 class JobIDs(BaseModel):
-    ids: List[str]
+    jobs: List[int]
 
 class JobResult(BaseModel):
-    job_id: str
-    char_count: int
+    jobId: int
+    charCount: int
     message: str
-    processed_at: datetime = None
+    processedTimestamp: float = None
 
 class ProcessingFlag(BaseModel):
     enable: bool
 
 class JobOut(BaseModel):
-    jobId: str
-    url: str
-    startingTimestamp: Optional[datetime] = None
-    processingTimestamp: Optional[datetime] = None
-    processedTimestamp: Optional[datetime] = None
+    jobId: int
+    fileUrl: str
+    startingTimestamp: Optional[float] = None
+    processingTimestamp: Optional[float] = None
+    processedTimestamp: Optional[float] = None
 
 class JobForMachineOut(BaseModel):
-    jobId: str
-    url: str
+    jobId: int
+    fileUrl: str
 
+
+## CONECTA_MAQUINA
+@app.post("/connect-machine/")
+def connect_machine(machine: Machine):
+    if machine.machine_id not in connected_machines:
+        connected_machines.append(machine.machine_id)
+        return {"message": "Machine connected successfully", "machine_id": machine.machine_id}
+    else:
+        return {"message": "Machine already connected", "machine_id": machine.machine_id}
+
+
+## RETORNO POR MAQUINA
+@app.get("/get-jobs-for-machine/{machine_id}")
+def get_jobs_for_machine(machine_id: str, limit: Optional[int] = 5):
+    jobs_send = []
+    if machine_id in jobs_by_machine:
+        jobs_send = [JobForMachineOut(jobId=job_id, fileUrl=jobs[job_id]['fileUrl']) for job_id in jobs_by_machine[machine_id][:limit]]
+        jobs_by_machine[machine_id] = jobs_by_machine[machine_id][limit:]
+    return {"jobs": jobs_send}
+
+
+## COLETA DE DADOS
 @app.post("/set-processing-flag/")
 def set_processing_flag(flag: ProcessingFlag):
     global is_processing_enabled
@@ -53,16 +79,35 @@ def set_processing_flag(flag: ProcessingFlag):
 
 @app.get("/get-processed-jobs/")
 def get_processed_jobs():
-    return {"processed_jobs": processed_jobs_list}
+    return {"jobs": processed_jobs_list}
 
+@app.post("/get-jobs-by-ids/")
+def get_jobs_by_ids(job_ids: JobIDs):
+    found_jobs = [
+        JobOut(
+                jobId=job_id,
+                fileUrl=jobs[job_id].get('fileUrl'),
+                startingTimestamp=jobs[job_id].get('startingTimestamp'),
+                processingTimestamp=jobs[job_id].get('processingTimestamp'),
+                processedTimestamp=jobs[job_id].get('processedTimestamp')
+            )
+        for job_id in job_ids.jobs if job_id in jobs
+    ]
+
+    return {"jobs": found_jobs}
+
+
+## ENVIO DE JOBS
 @app.post("/submit-job/")
 def submit_job(job: Job):
     global machine_index
+    global jobs_ids
     if not connected_machines:
         raise HTTPException(status_code=503, detail="No machines available")
-    job_id = str(uuid.uuid4())
+    job_id = jobs_ids
+    jobs_ids += 1
     assigned_machine = connected_machines[machine_index]
-    jobs[job_id] = {'url': job.url, 'submitted_at': datetime.now(), 'assigned_machine': assigned_machine}
+    jobs[job_id] = {'fileUrl': job.fileUrl, 'startingTimestamp': time.time(), 'assigned_machine': assigned_machine}
     
     # Atualiza jobs_by_machine
     if assigned_machine in jobs_by_machine:
@@ -72,53 +117,24 @@ def submit_job(job: Job):
     
     # Round-robin para a próxima máquina
     machine_index = (machine_index + 1) % len(connected_machines)
-    return {"job_id": job_id, "assigned_to": assigned_machine}
+    return {"jobId": job_id}
 
 @app.post("/submit-batch/")
 def submit_batch(batch: JobBatch):
-    responses = []
-    for job_url in batch.jobs:
-        responses.append(submit_job(Job(url=job_url)))
+    responses = [submit_job(Job(fileUrl=job_url)) for job_url in batch.jobs]
     return responses
 
-@app.get("/job/{job_id}")
-def get_job(job_id: str):
-    if job_id in completed_jobs:
-        return completed_jobs[job_id]
-    elif job_id in jobs:
-        return {"status": "in progress", "assigned_machine": jobs[job_id]['assigned_machine']}
-    else:
-        raise HTTPException(status_code=404, detail="Job not found")
 
-@app.post("/connect-machine/")
-def connect_machine(machine_id: str):
-    if machine_id not in connected_machines:
-        connected_machines.append(machine_id)
-        return {"message": "Machine connected successfully", "machine_id": machine_id}
-    else:
-        return {"message": "Machine already connected", "machine_id": machine_id}
+## RESULTADOS
+@app.post("/submit-result/")
+def submit_result(results: List[JobResult]):
+    time_r = time.time()
+    [set_result(result, time_r) for result in results]
+    return
 
-@app.get("/get-jobs-for-machine/{machine_id}")
-def get_jobs_for_machine(machine_id: str, limit: Optional[int] = 5):
-    found_jobs = []
-    if machine_id in jobs_by_machine:
-        for job_id in jobs_by_machine[machine_id][:limit]:
-            job = jobs[job_id]
-            found_jobs.append(JobForMachineOut(jobId=job_id, url=job['url']))
-    
-    return {"jobs": found_jobs}
-
-@app.post("/get-jobs-by-ids/")
-def get_jobs_by_ids(job_ids: JobIDs):
-    found_jobs = []
-    for job_id in job_ids.ids:
-        if job_id in jobs:
-            job = jobs[job_id]
-            found_jobs.append(JobOut(
-                jobId=job_id,
-                url=job['url'],
-                startingTimestamp=job.get('submitted_at'),
-                processingTimestamp=job.get('processing_started'),
-                processedTimestamp=job.get('processed_at')
-            ))
-    return {"jobs": found_jobs}
+def set_result(result: JobResult, time_r):
+    if is_processing_enabled:
+        processed_jobs_list.append(result.jobId)
+    result.processedTimestamp = time_r
+    jobs[result.jobId]['processedTimestamp'] = result.processedTimestamp
+    jobs[result.jobId]['charCount'] = result.charCount

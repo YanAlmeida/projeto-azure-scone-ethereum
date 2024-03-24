@@ -6,7 +6,7 @@ from datetime import datetime
 import os
 
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE"))
-WAIT_TIME = 1
+WAIT_TIME = int(os.environ.get("WAIT_TIME"))
 
 
 class TEEUser(User):
@@ -32,7 +32,7 @@ class TEEUser(User):
     @task
     def send_request_to_tee(self):
         inicio = time.time()
-        self._contract.submitJobBatch([self.host]*BATCH_SIZE, synchronous=False)
+        self._contract.submitJobBatch([self.host]*BATCH_SIZE)
         meio = time.time()
 
         for _ in range(BATCH_SIZE):

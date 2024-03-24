@@ -41,6 +41,8 @@ from functools import partial
 import json
 import time
 
+test_identifier = os.environ.get('TEST_IDENTIFIER')
+
 results = defaultdict(partial(defaultdict, list))
 times = defaultdict(partial(defaultdict, int))
 
@@ -55,7 +57,6 @@ for job in jobs:
         message = 'SUCESSO'
     else:
         message = 'ERRO'
-    test_identifier = get_test_identifier(job['fileUrl'])
     
     results[test_identifier][message].append(job['processedTimestamp'] - job['startingTimestamp'])
     if times[test_identifier]['START'] == 0:
@@ -84,7 +85,7 @@ with open(filename, 'a') as file:
 import json
 
 
-filename = f"/tmp/{list(results.keys())[0]}/RESULTADOS_TESTES_BLOCKCHAIN.txt"
+filename = f"/tmp/{test_identifier}/RESULTADOS_TESTES_BLOCKCHAIN.txt"
 
 with open(filename, 'a') as file:
     file.write(json.dumps(results))
@@ -194,10 +195,10 @@ import json
 import os
 
 
-filename = f"/tmp/{list(tempos.keys())[0]}/RESULTADOS_TESTES_TEE.txt"
+filename = f"/tmp/{test_identifier}/RESULTADOS_TESTES_TEE.txt"
 
 with open(filename, 'a') as file:
     file.write(json.dumps(resultados))
 filename
 
-os.rename("/tmp/DADOS_TESTES.txt", f"/tmp/{list(tempos.keys())[0]}/DADOS_TESTES.txt")
+os.rename("/tmp/DADOS_TESTES.txt", f"/tmp/{test_identifier}/DADOS_TESTES.txt")

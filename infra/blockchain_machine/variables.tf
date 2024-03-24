@@ -23,3 +23,8 @@ variable "public_key_ssh" {
 variable "dockerhub_image_blockchain" {
   description = "Docker image for blockchain instance."
 }
+
+variable "dockerhub_image_mockchain" {
+  description = "Docker image for blockchain mock instance."
+  default = ""
+}

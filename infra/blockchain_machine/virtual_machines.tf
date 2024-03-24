@@ -19,7 +19,7 @@ resource "aws_instance" "ec2_instance_blockchain" {
               sudo apt-get update
               sudo apt-get install -y docker.io
               sudo docker pull ${var.dockerhub_image_blockchain}
-              sudo docker run --name ganache -d -v /tmp:/tmp -p 8545:8545 ${var.dockerhub_image_blockchain}
+              sudo docker run --name ganache -d -p 8545:8545 ${var.dockerhub_image_mockchain}
               USERDATA
 
   tags = {
