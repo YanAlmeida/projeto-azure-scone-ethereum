@@ -4,6 +4,7 @@ FROM python:3.8-slim
 # Instalar sshpass
 RUN apt-get update && \
     apt-get install -y openssh-client bc && \
+    apt-get install -y netcat-openbsd && \
     rm -rf /var/lib/apt/lists/*
 
 # Configurar o diretório de trabalho

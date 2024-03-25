@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Defina as variáveis com os endereços dos seus nós TEE e Ganache
-TEE_NODE="52.179.187.225"
+TEE_NODE="40.79.58.243"
 
 CONTAINERS_HASHES_TEE=("tee")
 
@@ -41,7 +41,7 @@ run_test() {
         RPS="0$RPS"
     fi
 
-    locust -f main.py --headless -u $2 --host "output_$3.pdf/${RPS}RPS" --run-time 2m30s
+    locust -f main.py --headless -u $2 --spawn-rate $2 --host "output_$3.pdf/${RPS}RPS" --run-time 2m30s
 }
 
 # Execute o Locust test
@@ -63,7 +63,7 @@ for i in "${!WAIT_TIMES[@]}"; do
 
         echo "Criando diretorio para dados do teste"
         
-        RPS=$(echo "scale=1; ${WAIT_TIMES[i]} / ${CLIENT_NUMBERS[i]}" | bc)
+        RPS=$(echo "scale=1; ${CLIENT_NUMBERS[i]} / ${WAIT_TIMES[i]}" | bc)
         # Se o resultado terminar com '.0', então queremos remover a parte decimal
         if [[ $RPS == *.0 ]]; then
             RPS="${RPS%.*}"

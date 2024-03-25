@@ -6,7 +6,7 @@ from datetime import datetime
 import os
 
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE"))
-WAIT_TIME = 10
+WAIT_TIME = 1
 
 
 class TEEUser(User):
@@ -21,18 +21,18 @@ class TEEUser(User):
         TEEUser._user_count = [value] + TEEUser._user_count
         self._contract = get_contract(value)
         if self.value == 998:
-            print(self._contract._execute_transaction_method('setResultValue', True))
+            print(self._contract.setResultValue(True))
 
     def on_stop(self):
         if self.value == 998:
-            print(self._contract._execute_transaction_method('setResultValue', False, gas_price='150'))
+            print(self._contract.setResultValue(False))
         erase_cache()
         self._contract = None
 
     @task
     def send_request_to_tee(self):
         inicio = time.time()
-        self._contract.submitJobBatch([self.host]*BATCH_SIZE, synchronous=False)
+        self._contract.submitJobBatch([self.host]*BATCH_SIZE)
         meio = time.time()
 
         for _ in range(BATCH_SIZE):
