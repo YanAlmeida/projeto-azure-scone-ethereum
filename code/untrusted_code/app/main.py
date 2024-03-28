@@ -18,13 +18,13 @@ if __name__ == '__main__':
     # Verifica a disponibilidade do contrato inteligente
     try:
         while not check_contract_available():
-            time.sleep(POLL_INTERVAL)
+            time.sleep(10)
             continue
         # Efetua a conexão ao contrato inteligente
         try:
             get_contract().connectMachine()
         except:
-            # get_contract().disconnectMachine()
+            get_contract().disconnectMachine()
             get_contract().connectMachine()
 
         with ThreadPoolExecutor(max_workers=8) as executor:

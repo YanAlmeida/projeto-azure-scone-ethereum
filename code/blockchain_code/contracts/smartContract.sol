@@ -164,24 +164,24 @@ contract smartContract {
     }
 
     // Função para retorno de resultado referente ao job solicitado
-    function getJobsMachineView() external view returns(
+    function getJobsMachineView(uint limite) external view returns(
         uint[] memory jobsIds,
         string[] memory fileUrls
     ) {
         uint length = jobsPerAddress[msg.sender].length;
         uint counter = 0;
 
-        jobsIds = new uint[](length);
-        fileUrls = new string[](length);
+        jobsIds = new uint[](limite);
+        fileUrls = new string[](limite);
 
         for (uint i=0; i < length; i++){
             Job memory job = jobsPerId[jobsPerAddress[msg.sender][i]];
             if(jobProcessingInfo[job.jobId].currentStatus == 1 && jobProcessingInfo[job.jobId].responsibleMachine == msg.sender){
+                jobsIds[counter] = (job.jobId);
+                fileUrls[counter] = (job.fileUrl);
                 counter = counter + 1;
-                jobsIds[i] = (job.jobId);
-                fileUrls[i] = (job.fileUrl);
             }
-            if (counter == 100){
+            if (counter == limite){
                 break;
             }
         }

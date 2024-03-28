@@ -1,18 +1,18 @@
 #!/bin/bash
 
 # Defina as variáveis com os endereços dos seus nós TEE e Ganache
-TEE_NODES=("40.84.53.153" "40.84.53.48")
+TEE_NODES=("40.79.249.118")
 NON_PUBLIC_NODE="10.0.1.6"
 
-GANACHE_NODE="18.223.172.239"
+GANACHE_NODE="3.15.221.88"
 
 export BLOCKCHAIN_ADDRESS="http://${GANACHE_NODE}:8545"
 
 CONTAINERS_HASHES_TEE=("untrusted" "tee" "nginx")
 
-BATCH_SIZES=(5 10 15 20 20 20 20 25)
-CLIENT_NUMBERS=(1 1 1 1 2 3 4 4)
-FILE_SIZES=("1kb" "10kb" "100kb", "1mb", "5mb", "10mb")
+BATCH_SIZES=(15)
+CLIENT_NUMBERS=(1)
+FILE_SIZES=("100kb")
 
 eval $(ssh-agent -s)
 ssh-add /root/.ssh/id_rsa
@@ -21,13 +21,9 @@ ssh-add /root/.ssh/id_rsa
 # Função para parar os containers do nó TEE
 stop_tee_containers() {
     for node in "${TEE_NODES[@]}"; do
-        for container_hash in "${CONTAINERS_HASHES_TEE[@]}"; do
-            ssh -o StrictHostKeyChecking=no ubuntu@$node sudo docker stop $container_hash
-        done
+        ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker rm --force \$(sudo docker ps -q)"
     done
-    for container_hash in "${CONTAINERS_HASHES_TEE[@]}"; do
-        ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE sudo docker stop $container_hash
-    done
+    # ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo /docker_rm.sh"
 }
 
 # Função para reiniciar o container Ganache
@@ -35,25 +31,49 @@ restart_ganache_container() {
     ssh -o StrictHostKeyChecking=no ubuntu@$GANACHE_NODE "sudo docker rm --force \$(sudo docker ps -q)"
     sleep 1
     ssh -o StrictHostKeyChecking=no ubuntu@$GANACHE_NODE sudo docker run -d -p 8545:8545 yanalmeida91/ganache-smart-contract:latest
+    sleep 15
 }
 
+
+run_untrusted_container() {
+    for j in "${!TEE_NODES[@]}"; do
+        node="${TEE_NODES[j]}"
+        ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker run -d --name untrusted --network=\"host\" \
+                                                            -e BLOCKCHAIN_ADDRESS=\"${BLOCKCHAIN_ADDRESS}\" \
+                                                            -e CONTRACT_ABI='[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"_machine\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_value\",\"type\":\"uint256\"}],\"name\":\"ReturnUInt\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"collectResults\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"connectMachine\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"connectedMachines\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"disconnectMachine\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"disconnectedMachines\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"idList\",\"type\":\"uint256[]\"}],\"name\":\"getJobs\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"jobIds\",\"type\":\"uint256[]\"},{\"internalType\":\"string[]\",\"name\":\"fileUrls\",\"type\":\"string[]\"},{\"internalType\":\"uint256[]\",\"name\":\"startingTimes\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"processingTimes\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"endingTimes\",\"type\":\"uint256[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"_jobsIds\",\"type\":\"uint256[]\"}],\"name\":\"getJobsMachine\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"limite\",\"type\":\"uint256\"}],\"name\":\"getJobsMachineView\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"jobsIds\",\"type\":\"uint256[]\"},{\"internalType\":\"string[]\",\"name\":\"fileUrls\",\"type\":\"string[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_jobId\",\"type\":\"uint256\"}],\"name\":\"getResult\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"charCount\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"message\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"heartBeat\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"jobProcessingInfo\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"waitingTimestamp\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"processingTimestamp\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"currentStatus\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"responsibleMachine\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"indexInJobs\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"indexInMachine\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"processedTimestamp\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"jobProcessingMaxTime\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"jobUpdateInterval\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"jobs\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"jobsPerAddress\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"jobsPerId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"jobId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"fileUrl\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"lastJobId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"processedJobs\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resetProcessedJobs\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"resultsPerJobId\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"jobId\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"charCount\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"message\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"returnJobsIds\",\"outputs\":[{\"internalType\":\"uint256[]\",\"name\":\"jobIds\",\"type\":\"uint256[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bool\",\"name\":\"value\",\"type\":\"bool\"}],\"name\":\"setResultValue\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"url\",\"type\":\"string\"}],\"name\":\"submitJob\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"_jobId\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string[]\",\"name\":\"urls\",\"type\":\"string[]\"}],\"name\":\"submitJobBatch\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"_jobsIds\",\"type\":\"uint256[]\"},{\"internalType\":\"uint256[]\",\"name\":\"_charCounts\",\"type\":\"uint256[]\"},{\"internalType\":\"string[]\",\"name\":\"_messages\",\"type\":\"string[]\"}],\"name\":\"submitResults\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]' \
+                                                            -e CONTRACT_ADDRESS=\"0x5b92A0289CBeBacC143842122bC3c5B78e5584FB\" \
+                                                            -e ACCOUNT_INDEX=\"${j}\" -e POLL_INTERVAL=\"${1}\" -e LIMIT_JOBS=\"${2}\" \
+                                                            yanalmeida91/sgx-untrusted-blockchain-pull:latest"
+    done
+    # ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo /untrusted_start.sh"
+}
+
+run_tee_container() {
+    for node in "${TEE_NODES[@]}"; do
+        ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker run -d --name tee --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-yanalmeida91/sgx-blockchain-pull:latest"
+    done
+    # ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name tee --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-yanalmeida91/sgx-blockchain-pull:latest"
+}
+
+run_nginx_container() {
+    for node in "${TEE_NODES[@]}"; do
+        ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker run -d --name nginx -p 8080:80 yanalmeida91/nginx-file-repo:latest"
+    done
+    # ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name nginx -p 8080:80 yanalmeida91/nginx-file-repo:latest"
+}
 
 # Função para reiniciar os containers TEE
 restart_tee_containers() {
-    for node in "${TEE_NODES[@]}"; do
-        for container_hash in "${CONTAINERS_HASHES_TEE[@]}"; do
-            ssh -o StrictHostKeyChecking=no ubuntu@$node sudo docker restart $container_hash
-        done
-    done
-    for container_hash in "${CONTAINERS_HASHES_TEE[@]}"; do
-        ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE sudo docker restart $container_hash
-    done
+    run_tee_container
+    run_untrusted_container $1 $2
+    run_nginx_container
 }
+
 
 run_test() {
     export BATCH_SIZE=$1
 
-    RPS=$(echo "scale=1; $1 * $2 / 10" | bc)
+    RPS=$(echo "scale=1; $1 * $2 / 15" | bc)
 
     # Se o resultado terminar com '.0', então queremos remover a parte decimal
     if [[ $RPS == *.0 ]]; then
@@ -76,19 +96,22 @@ for i in "${!BATCH_SIZES[@]}"; do
         echo "Reiniciando blockchain"
         restart_ganache_container
 
-        sleep 5
+        while ! nc -z ${GANACHE_NODE} 8545; do
+            echo "Service at ${GANACHE_NODE}:8545 is not available yet. Waiting for 1 second..."
+            sleep 1
+        done
 
         echo "Reiniciando TEE"
-        restart_tee_containers
+        restart_tee_containers 15 15
 
-        while ! nc -z ${TEE_NODE[0]} 9090; do
-            echo "Service at ${TEE_NODE[0]}:9090 is not available yet. Waiting for 5 seconds..."
-            sleep 5
+        while ! nc -z ${TEE_NODES[0]} 9090; do
+            echo "Service at ${TEE_NODES[0]}:9090 is not available yet. Waiting for 1 second..."
+            sleep 1
         done
 
         echo "Criando diretorio para dados do teste"
         
-        RPS=$(echo "scale=1; ${BATCH_SIZES[i]} * ${CLIENT_NUMBERS[i]} / 10" | bc)
+        RPS=$(echo "scale=1; ${BATCH_SIZES[i]} * ${CLIENT_NUMBERS[i]} / 15" | bc)
         # Se o resultado terminar com '.0', então queremos remover a parte decimal
         if [[ $RPS == *.0 ]]; then
             RPS="${RPS%.*}"

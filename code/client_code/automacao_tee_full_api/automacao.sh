@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Defina as variáveis com os endereços dos seus nós TEE e Ganache
-TEE_NODES=("40.79.58.243")
+TEE_NODES=("40.79.58.243" "20.57.52.84")
 NON_PUBLIC_NODE="10.0.1.6"
 
 GANACHE_NODE="3.17.175.207"
@@ -12,7 +12,8 @@ CONTAINERS_HASHES_TEE=("untrusted" "tee" "nginx")
 
 BATCH_SIZES=(1 10 50 100 200 150 200 250 250)
 CLIENT_NUMBERS=(1 1 1 1 1 2 2 2 4)
-FILE_SIZES=("1kb" "5kb" "10kb" "50kb" "100kb", "1mb", "5mb", "10mb")
+
+FILE_SIZES=("1kb" "5kb" "10kb" "50kb" "100kb" "1mb" "5mb")
 
 eval $(ssh-agent -s)
 ssh-add /root/.ssh/id_rsa
@@ -23,7 +24,7 @@ stop_tee_containers() {
     for node in "${TEE_NODES[@]}"; do
         ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker rm --force \$(sudo docker ps -q)"
     done
-    # ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker rm --force \$(sudo docker ps -q)"
+    ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo /docker_rm.sh"
 }
 
 # Função para reiniciar o container Ganache
@@ -35,35 +36,30 @@ restart_ganache_container() {
 
 
 run_untrusted_container() {
-    for i in "${!TEE_NODES[@]}"; do
-        node="${TEE_NODES[i]}"
+    for j in "${!TEE_NODES[@]}"; do
+        node="${TEE_NODES[j]}"
         ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker run -d --name untrusted --network=\"host\" \
                                                             -e BLOCKCHAIN_ADDRESS=\"${BLOCKCHAIN_ADDRESS}\" \
                                                             -e CONTRACT_ABI='[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"},{"indexed":false,"internalType":"uint256","name":"_value","type":"uint256"}],"name":"ReturnUInt","type":"event"},{"inputs":[],"name":"connectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"connectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"disconnectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"disconnectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getJobs","outputs":[{"internalType":"uint256[]","name":"jobIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"}],"name":"getJobsMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getJobsMachineView","outputs":[{"internalType":"uint256[]","name":"jobsIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"name":"getResult","outputs":[{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"heartBeat","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobProcessingInfo","outputs":[{"internalType":"uint256","name":"waitingTimestamp","type":"uint256"},{"internalType":"uint256","name":"processingTimestamp","type":"uint256"},{"internalType":"uint256","name":"currentStatus","type":"uint256"},{"internalType":"address","name":"responsibleMachine","type":"address"},{"internalType":"uint256","name":"indexInJobs","type":"uint256"},{"internalType":"uint256","name":"indexInMachine","type":"uint256"},{"internalType":"uint256","name":"processedTimestamp","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobProcessingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobUpdateInterval","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobWaitingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobs","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"string","name":"fileUrl","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"resultsPerJobId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"url","type":"string"}],"name":"submitJob","outputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"},{"internalType":"uint256[]","name":"_charCounts","type":"uint256[]"},{"internalType":"string[]","name":"_messages","type":"string[]"}],"name":"submitResults","outputs":[],"stateMutability":"nonpayable","type":"function"}]' \
                                                             -e CONTRACT_ADDRESS=\"0x5b92A0289CBeBacC143842122bC3c5B78e5584FB\" \
-                                                            -e ACCOUNT_INDEX=\"${i}\" -e POLL_INTERVAL=\"${1}\" -e LIMIT_JOBS=\"${2}\" \
+                                                            -e ACCOUNT_INDEX=\"${j}\" -e POLL_INTERVAL=\"${1}\" -e LIMIT_JOBS=\"${2}\" \
                                                             yanalmeida91/sgx-untrusted-blockchain-pull:latest"
     done
-    # ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name untrusted --network=\"host\" \
-    #                                                                                                                     -e BLOCKCHAIN_ADDRESS=\"${BLOCKCHAIN_ADDRESS}\" \
-    #                                                                                                                     -e CONTRACT_ABI='[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"},{"indexed":false,"internalType":"uint256","name":"_value","type":"uint256"}],"name":"ReturnUInt","type":"event"},{"inputs":[],"name":"connectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"connectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"disconnectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"disconnectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getJobs","outputs":[{"internalType":"uint256[]","name":"jobIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"}],"name":"getJobsMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getJobsMachineView","outputs":[{"internalType":"uint256[]","name":"jobsIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"name":"getResult","outputs":[{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"heartBeat","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobProcessingInfo","outputs":[{"internalType":"uint256","name":"waitingTimestamp","type":"uint256"},{"internalType":"uint256","name":"processingTimestamp","type":"uint256"},{"internalType":"uint256","name":"currentStatus","type":"uint256"},{"internalType":"address","name":"responsibleMachine","type":"address"},{"internalType":"uint256","name":"indexInJobs","type":"uint256"},{"internalType":"uint256","name":"indexInMachine","type":"uint256"},{"internalType":"uint256","name":"processedTimestamp","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobProcessingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobUpdateInterval","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobWaitingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobs","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"string","name":"fileUrl","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"resultsPerJobId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"url","type":"string"}],"name":"submitJob","outputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"},{"internalType":"uint256[]","name":"_charCounts","type":"uint256[]"},{"internalType":"string[]","name":"_messages","type":"string[]"}],"name":"submitResults","outputs":[],"stateMutability":"nonpayable","type":"function"}]' \
-    #                                                                                                                     -e CONTRACT_ADDRESS=\"0x5b92A0289CBeBacC143842122bC3c5B78e5584FB\" \
-    #                                                                                                                     -e ACCOUNT_INDEX=\"3\" -e POLL_INTERVAL=\"${1}\" -e LIMIT_JOBS=\"${2}\" \
-    #                                                                                                                     yanalmeida91/sgx-untrusted-blockchain-pull:latest"
+    ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo /untrusted_start.sh"
 }
 
 run_tee_container() {
     for node in "${TEE_NODES[@]}"; do
         ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker run -d --name tee --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-yanalmeida91/sgx-blockchain-pull:latest"
     done
-    # ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name tee --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-yanalmeida91/sgx-blockchain-pull:latest"
+    ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name tee --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-yanalmeida91/sgx-blockchain-pull:latest"
 }
 
 run_nginx_container() {
     for node in "${TEE_NODES[@]}"; do
         ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker run -d --name nginx -p 8080:80 yanalmeida91/nginx-file-repo:latest"
     done
-    # ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name nginx -p 8080:80 yanalmeida91/nginx-file-repo:latest"
+    ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name nginx -p 8080:80 yanalmeida91/nginx-file-repo:latest"
 }
 
 # Função para reiniciar os containers TEE
@@ -86,7 +82,7 @@ run_test() {
         RPS="0$RPS"
     fi
 
-    locust -f main.py --headless -u $2 --spawn-rate $2 --host "http://127.0.0.1:8080/output_$3.pdf?${RPS}RPS" --run-time 5m
+    locust -f main.py --headless -u $2 --spawn-rate $2 --host "http://127.0.0.1:8080/output_$3.pdf?${RPS}RPS" --run-time 7m
 }
 
 # Execute o Locust test

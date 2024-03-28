@@ -6,7 +6,7 @@ from datetime import datetime
 import os
 
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE"))
-WAIT_TIME = 10
+WAIT_TIME = 15
 
 
 class TEEUser(User):

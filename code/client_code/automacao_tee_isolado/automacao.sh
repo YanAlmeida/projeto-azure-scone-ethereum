@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Defina as variáveis com os endereços dos seus nós TEE e Ganache
-TEE_NODE="40.79.58.243"
+TEE_NODE="52.179.134.123"
 
 CONTAINERS_HASHES_TEE=("tee")
 
-WAIT_TIMES=(1 1 0.5 0.25 0.25 0.33 0.25 0.2 0.2)
+WAIT_TIMES=(1 1 0.5 0.25 0.25 0.33 0.25 0.2 0.1)
 CLIENT_NUMBERS=(1 10 25 25 50 100 100 100 100)
 
 FILE_SIZES=("1kb" "5kb" "10kb" "50kb" "100kb" "1mb" "5mb")
@@ -41,7 +41,7 @@ run_test() {
         RPS="0$RPS"
     fi
 
-    locust -f main.py --headless -u $2 --spawn-rate $2 --host "output_$3.pdf/${RPS}RPS" --run-time 2m30s
+    locust -f main.py --headless -u $2 --spawn-rate $2 --host "output_$3.pdf/${RPS}RPS" --run-time 7min
 }
 
 # Execute o Locust test

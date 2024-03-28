@@ -11,8 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia o resto do seu código-fonte para o diretório de trabalho dentro do container
 COPY . .
 
-# Expõe a porta 8000 para permitir a comunicação com o aplicativo
-EXPOSE 8000
+# Expõe a porta 8545 para permitir a comunicação com o aplicativo
+EXPOSE 8545
 
 # Comando para rodar a aplicação usando o Gunicorn com workers Uvicorn
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "main:app", "--workers", "1", "--bind", "0.0.0.0:8545"]
