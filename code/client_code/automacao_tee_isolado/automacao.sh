@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Defina as variáveis com os endereços dos seus nós TEE e Ganache
-TEE_NODE="52.179.134.123"
+TEE_NODE="20.22.235.209"
 
 CONTAINERS_HASHES_TEE=("tee")
 

@@ -3,7 +3,7 @@ import json
 import pytz
 from datetime import datetime
 
-API_KEY = 'API_KEY'
+API_KEY = 'KEY'
 ACCOUNT_ID = 4269971
 FUNCTION_NAME = 'OtherTransaction/Function/src.thread_accept_connection:process_pdf_data'
 
@@ -109,3 +109,4 @@ with open(filename, 'a') as file:
 filename
 
 os.rename("/tmp/DADOS_TESTES.txt", f"/tmp/{list(tempos.keys())[0]}/DADOS_TESTES.txt")
+os.rename("/tmp/response_times.txt", f"/tmp/{list(tempos.keys())[0]}/response_times.txt")

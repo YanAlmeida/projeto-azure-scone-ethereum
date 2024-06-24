@@ -10,6 +10,13 @@ WAIT_TIME = float(os.environ.get("WAIT_TIME"))
 TEE_ADDRESS = os.environ.get("TEE_ADDRESS")
 
 
+def log_response_time(request_type, name, response_time, **kwargs):
+    # Here we write the response time to a text file
+    with open('/tmp/response_times.txt', 'a') as file:
+        file.write(f"{response_time}\n")
+
+events.request.add_listener(log_response_time)
+
 def timestamp_to_string(timestamp):
     datetime_value = datetime.fromtimestamp(timestamp, tz=pytz.timezone('America/Sao_Paulo'))
     return datetime_value.strftime("%Y-%m-%d %H:%M:%S")
@@ -27,16 +34,18 @@ class TEEUser(User):
             file = open(host, 'rb')
             TEEUser._file = file.read()
             file.close()
-            open(f'/tmp/DADOS_TESTES.txt', 'a').write(f'START {host_size}-{rps}: {timestamp_to_string(time.time())}\n')
+            with open(f'/tmp/DADOS_TESTES.txt', 'a') as f:
+                f.write(f'START {host_size}-{rps}: {timestamp_to_string(time.time())}\n')
         self._file = TEEUser._file
 
     def on_stop(self):
         host, rps = self.host.split('/')
         host_size = host.split('_')[1].split('.')[0]
-        self._file = None
         if TEEUser._file is not None:
             TEEUser._file = None
-            open(f'/tmp/DADOS_TESTES.txt', 'a').write(f'END {host_size}-{rps}: {timestamp_to_string(time.time())}\n#\n')
+            with open(f'/tmp/DADOS_TESTES.txt', 'a') as f:
+                f.write(f'END {host_size}-{rps}: {timestamp_to_string(time.time())}\n#\n')
+        self._file = None
 
     @task
     def send_request_to_tee(self):
@@ -50,6 +59,7 @@ class TEEUser(User):
 
                 full_buffer = bytes(header, 'utf-8') + self._file + bytes(footer, 'utf-8')
                 client_socket.sendall(full_buffer)
+                client_socket.recv(1024)
             meio = time.time()
 
             events.request.fire(

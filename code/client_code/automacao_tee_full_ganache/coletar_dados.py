@@ -248,7 +248,7 @@ import json
 import pytz
 from datetime import datetime
 
-API_KEY = 'API_KEY'
+API_KEY = 'KEY'
 ACCOUNT_ID = 4269971
 FUNCTION_NAME = 'OtherTransaction/Function/src.thread_accept_connection:process_pdf_data'
 
