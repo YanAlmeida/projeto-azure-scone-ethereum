@@ -1,0 +1,4 @@
+# Gramine manifest template for a Dockerized Python application
+# SGX enclave settings
+sgx.enclave_size = "4G"
+sgx.max_threads = 16
