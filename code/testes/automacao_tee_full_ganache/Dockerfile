@@ -16,6 +16,7 @@ COPY id_rsa /root/.ssh/id_rsa
 COPY id_rsa.pub /root/.ssh/id_rsa.pub
 
 # Garantir permissões adequadas para as chaves
+
 RUN chmod 600 /root/.ssh/id_rsa && \
     chmod 644 /root/.ssh/id_rsa.pub
 

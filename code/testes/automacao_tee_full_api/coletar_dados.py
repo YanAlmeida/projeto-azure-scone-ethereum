@@ -1,12 +1,17 @@
 import os
-from smart_contract import get_contract
+from typing import Tuple, List, Dict, Union, Any
+
 from web3 import Web3, Account
 from web3.contract import Contract
 from web3.eth import Eth
 from web3._utils.filters import LogFilter
 from hdwallet import HDWallet
-import requests
+from smart_contract import get_contract
+import threading
+import asyncio
 
+Job = Dict[str, Union[int, str]]
+Result = Dict[str, Union[int, str]]
 
 def get_test_identifier(url):
     identifier = url.split('/')[-1].split('?')
@@ -41,8 +46,6 @@ from functools import partial
 import json
 import time
 
-test_identifier = os.environ.get('TEST_IDENTIFIER')
-
 results = defaultdict(partial(defaultdict, list))
 times = defaultdict(partial(defaultdict, int))
 
@@ -53,10 +56,11 @@ jobs = get_jobs(CHUNK_SIZE)
 print(time.time() - a)
 
 for job in jobs:
-    if job['processedTimestamp'] != 0:
+    if job['processedTimestamp'] is not None:
         message = 'SUCESSO'
     else:
         message = 'ERRO'
+    test_identifier = os.environ.get('TEST_IDENTIFIER')
     
     results[test_identifier][message].append(job['processedTimestamp'] - job['startingTimestamp'])
     if times[test_identifier]['START'] == 0:
@@ -85,7 +89,7 @@ with open(filename, 'a') as file:
 import json
 
 
-filename = f"/tmp/{test_identifier}/RESULTADOS_TESTES_BLOCKCHAIN.txt"
+filename = f"/tmp/{list(results.keys())[0]}/RESULTADOS_TESTES_BLOCKCHAIN.txt"
 
 with open(filename, 'a') as file:
     file.write(json.dumps(results))
@@ -96,7 +100,7 @@ import json
 import pytz
 from datetime import datetime
 
-API_KEY = 'KEY'
+API_KEY = 'API_KEY'
 ACCOUNT_ID = 4269971
 FUNCTION_NAME = 'OtherTransaction/Function/src.thread_accept_connection:process_pdf_data'
 
@@ -195,10 +199,10 @@ import json
 import os
 
 
-filename = f"/tmp/{test_identifier}/RESULTADOS_TESTES_TEE.txt"
+filename = f"/tmp/{list(tempos.keys())[0]}/RESULTADOS_TESTES_TEE.txt"
 
 with open(filename, 'a') as file:
     file.write(json.dumps(resultados))
 filename
 
-os.rename("/tmp/DADOS_TESTES.txt", f"/tmp/{test_identifier}/DADOS_TESTES.txt")
+os.rename("/tmp/DADOS_TESTES.txt", f"/tmp/{list(tempos.keys())[0]}/DADOS_TESTES.txt")

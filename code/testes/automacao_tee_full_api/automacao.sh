@@ -1,17 +1,14 @@
 #!/bin/bash
 
-# Defina as variáveis com os endereços dos seus nós TEE e Ganache
-TEE_NODES=("20.22.235.209" "172.200.225.79")
-NON_PUBLIC_NODE="10.0.1.6"
-
-GANACHE_NODE="18.222.107.181"
+# Defina as variáveis com os endereços dos seus nós TEE e Ganache: TEE_NODES_STR, separado por :; GANACHE_NODE, NON_PUBLIC_NODE, se houver
+IFS=':' read -r -a TEE_NODES <<< "$TEE_NODES_STR"
 
 export BLOCKCHAIN_ADDRESS="http://${GANACHE_NODE}:8545"
 
 CONTAINERS_HASHES_TEE=("untrusted" "tee" "nginx")
 
-BATCH_SIZES=(4 6)
-CLIENT_NUMBERS=(1 1)
+BATCH_SIZES=(1 4 6 10 50 100 200 150 200 250 250)
+CLIENT_NUMBERS=(1 1 1 1 1 1 1 2 2 2 4)
 
 FILE_SIZES=("1kb" "5kb" "10kb" "50kb" "100kb" "1mb" "5mb")
 
@@ -24,7 +21,10 @@ stop_tee_containers() {
     for node in "${TEE_NODES[@]}"; do
         ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker rm --force \$(sudo docker ps -q)"
     done
-    ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo /docker_rm.sh"
+    comando="sudo docker rm --force \$(sudo docker ps -q)"
+    if [ -n "$NON_PUBLIC_NODE" ]; then
+        ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "$comando"
+    fi
 }
 
 # Função para reiniciar o container Ganache
@@ -45,21 +45,33 @@ run_untrusted_container() {
                                                             -e ACCOUNT_INDEX=\"${j}\" -e POLL_INTERVAL=\"${1}\" -e LIMIT_JOBS=\"${2}\" \
                                                             yanalmeida91/sgx-untrusted-blockchain-pull:api"
     done
-    ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo /untrusted_start.sh"
+    comando="sudo docker run -d --name untrusted --network=\"host\" \
+                                                            -e BLOCKCHAIN_ADDRESS=\"${BLOCKCHAIN_ADDRESS}\" \
+                                                            -e CONTRACT_ABI='[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"_machine","type":"address"},{"indexed":false,"internalType":"uint256","name":"_value","type":"uint256"}],"name":"ReturnUInt","type":"event"},{"inputs":[],"name":"connectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"connectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"disconnectMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"disconnectedMachines","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getJobs","outputs":[{"internalType":"uint256[]","name":"jobIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"}],"name":"getJobsMachine","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getJobsMachineView","outputs":[{"internalType":"uint256[]","name":"jobsIds","type":"uint256[]"},{"internalType":"string[]","name":"fileUrls","type":"string[]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"name":"getResult","outputs":[{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"heartBeat","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobProcessingInfo","outputs":[{"internalType":"uint256","name":"waitingTimestamp","type":"uint256"},{"internalType":"uint256","name":"processingTimestamp","type":"uint256"},{"internalType":"uint256","name":"currentStatus","type":"uint256"},{"internalType":"address","name":"responsibleMachine","type":"address"},{"internalType":"uint256","name":"indexInJobs","type":"uint256"},{"internalType":"uint256","name":"indexInMachine","type":"uint256"},{"internalType":"uint256","name":"processedTimestamp","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobProcessingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobUpdateInterval","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"jobWaitingMaxTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobs","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerAddress","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"jobsPerId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"string","name":"fileUrl","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"resultsPerJobId","outputs":[{"internalType":"uint256","name":"jobId","type":"uint256"},{"internalType":"uint256","name":"charCount","type":"uint256"},{"internalType":"string","name":"message","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"url","type":"string"}],"name":"submitJob","outputs":[{"internalType":"uint256","name":"_jobId","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256[]","name":"_jobsIds","type":"uint256[]"},{"internalType":"uint256[]","name":"_charCounts","type":"uint256[]"},{"internalType":"string[]","name":"_messages","type":"string[]"}],"name":"submitResults","outputs":[],"stateMutability":"nonpayable","type":"function"}]' \
+                                                            -e CONTRACT_ADDRESS=\"0x5b92A0289CBeBacC143842122bC3c5B78e5584FB\" \
+                                                            -e ACCOUNT_INDEX=\"2\" -e POLL_INTERVAL=\"${1}\" -e LIMIT_JOBS=\"${2}\" \
+                                                            yanalmeida91/sgx-untrusted-blockchain-pull:api"
+    if [ -n "$NON_PUBLIC_NODE" ]; then
+        ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "$comando"
+    fi
 }
 
 run_tee_container() {
     for node in "${TEE_NODES[@]}"; do
         ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker run -d --name tee --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-yanalmeida91/sgx-blockchain-pull:latest"
     done
-    ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name tee --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-yanalmeida91/sgx-blockchain-pull:latest"
+    if [ -n "$NON_PUBLIC_NODE" ]; then
+        ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name tee --device=/dev/sgx_enclave -v /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket -p 9090:9090 gsc-yanalmeida91/sgx-blockchain-pull:latest"
+    fi
 }
 
 run_nginx_container() {
     for node in "${TEE_NODES[@]}"; do
         ssh -o StrictHostKeyChecking=no ubuntu@$node "sudo docker run -d --name nginx -p 8080:80 yanalmeida91/nginx-file-repo:latest"
     done
-    ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name nginx -p 8080:80 yanalmeida91/nginx-file-repo:latest"
+    if [ -n "$NON_PUBLIC_NODE" ]; then
+        ssh -A -o StrictHostKeyChecking=no ubuntu@${TEE_NODES[0]} ssh -o StrictHostKeyChecking=no ubuntu@$NON_PUBLIC_NODE "sudo docker run -d --name nginx -p 8080:80 yanalmeida91/nginx-file-repo:latest"
+    fi
 }
 
 # Função para reiniciar os containers TEE

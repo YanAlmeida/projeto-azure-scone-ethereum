@@ -1,15 +1,11 @@
 #!/bin/bash
 
-# Defina as variáveis com os endereços dos seus nós TEE e Ganache
-TEE_NODE="20.22.235.209"
-
-GANACHE_NODE="18.222.107.181"
+# Defina as variáveis com os endereços dos seus nós TEE e Ganache: TEE_NODE e GANACHE_NODE
 
 export BLOCKCHAIN_ADDRESS="http://${GANACHE_NODE}:8545"
 
-LIMITES_TEMPO=(15)
-LIMITES_JOBS=(15)
-
+LIMITES_TEMPO=(1 10 15 30 60 90 120 150)
+LIMITES_JOBS=(1 10 15 50 100 500 1000)
 eval $(ssh-agent -s)
 ssh-add /root/.ssh/id_rsa
 

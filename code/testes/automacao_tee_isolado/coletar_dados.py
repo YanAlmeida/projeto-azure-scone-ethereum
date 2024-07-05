@@ -1,106 +1,9 @@
-import os
-from typing import Tuple, List, Dict, Union, Any
-
-from web3 import Web3, Account
-from web3.contract import Contract
-from web3.eth import Eth
-from web3._utils.filters import LogFilter
-from hdwallet import HDWallet
-from smart_contract import get_contract
-import threading
-import asyncio
-
-Job = Dict[str, Union[int, str]]
-Result = Dict[str, Union[int, str]]
-
-def get_test_identifier(url):
-    identifier = url.split('/')[-1].split('?')
-    return identifier[0].strip('output_').strip('.pdf') + '-' + identifier[1]
-
-from concurrent.futures import ThreadPoolExecutor
-
-def split(list_a: list, chunk_size: int):
-    for i in range(0, len(list_a), chunk_size):
-        yield list_a[i:i + chunk_size]
-
-def get_jobs(chunk_size):
-    jobs_ids = get_contract(999).returnJobsIds()
-
-    pairs = split(jobs_ids, chunk_size)
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        futures = [executor.submit(get_contract(999).getJobs, pair) for pair in pairs]
-
-        # Optionally, wait for all futures to complete and process results
-        final_result = []
-        for future in futures:
-            try:
-                # Get the result of the future. This line will block until the future is complete
-                final_result += future.result()
-                # Process result (if needed)
-            except Exception as e:
-                print(f"Request failed: {e}")
-        return final_result
-
-from collections import defaultdict
-from functools import partial
-import json
-import time
-
-results = defaultdict(partial(defaultdict, list))
-times = defaultdict(partial(defaultdict, int))
-
-CHUNK_SIZE = 50
-
-a = time.time()
-jobs = get_jobs(CHUNK_SIZE)
-print(time.time() - a)
-
-for job in jobs:
-    if job['processedTimestamp'] is not None:
-        message = 'SUCESSO'
-    else:
-        message = 'ERRO'
-    test_identifier = os.environ.get('TEST_IDENTIFIER')
-    
-    results[test_identifier][message].append(job['processedTimestamp'] - job['startingTimestamp'])
-    if times[test_identifier]['START'] == 0:
-        times[test_identifier]['START'] = 1000000000000
-    times[test_identifier]['START'] = min(times[test_identifier]['START'], job['startingTimestamp'])
-    times[test_identifier]['END'] = max(times[test_identifier]['END'], job['processedTimestamp'])
-print(len(jobs))
-
-from datetime import datetime
-import pytz
-
-filename = f"/tmp/DADOS_TESTES.txt"
-
-def timestamp_to_string(timestamp):
-    datetime_value = datetime.fromtimestamp(timestamp, tz=pytz.timezone('America/Sao_Paulo'))
-    return datetime_value.strftime("%Y-%m-%d %H:%M:%S")
-
-
-with open(filename, 'a') as file:
-    for test, tempos in times.items():
-        for marcacao, tempo in tempos.items():
-            file.write(f'{marcacao} {test}: {timestamp_to_string(tempo)}\n')
-            if marcacao == 'END':
-                file.write('#\n')
-
-import json
-
-
-filename = f"/tmp/{list(results.keys())[0]}/RESULTADOS_TESTES_BLOCKCHAIN.txt"
-
-with open(filename, 'a') as file:
-    file.write(json.dumps(results))
-
-
 import requests
 import json
 import pytz
 from datetime import datetime
 
-API_KEY = 'KEY'
+API_KEY = 'API_KEY'
 ACCOUNT_ID = 4269971
 FUNCTION_NAME = 'OtherTransaction/Function/src.thread_accept_connection:process_pdf_data'
 
@@ -206,3 +109,4 @@ with open(filename, 'a') as file:
 filename
 
 os.rename("/tmp/DADOS_TESTES.txt", f"/tmp/{list(tempos.keys())[0]}/DADOS_TESTES.txt")
+os.rename("/tmp/response_times.txt", f"/tmp/{list(tempos.keys())[0]}/response_times.txt")
