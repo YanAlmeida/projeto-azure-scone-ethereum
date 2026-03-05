@@ -124,7 +124,6 @@ def submit_batch(batch: JobBatch):
     responses = [submit_job(Job(fileUrl=job_url)) for job_url in batch.jobs]
     return responses
 
-
 ## RESULTADOS
 @app.post("/submit-result/")
 def submit_result(results: List[JobResult]):
